@@ -32,7 +32,30 @@ export default defineConfig({
             purpose: 'any maskable'
           }
         ]
+      },
+      
+      workbox: {
+        // アプリを構成する基本ファイルを事前にキャッシュ
+        globPatterns: ['**/*.{js,css,html,ico,png,svg}'], 
+        runtimeCaching: [
+          {
+            // 背景となるベースマップ（ArcGIS）のタイル画像をキャッシュ
+            urlPattern: /^https:\/\/server\.arcgisonline\.com\/.*/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'base-map-cache',
+              expiration: {
+                maxEntries: 300,                  // 最大300枚の地図画像を保持
+                maxAgeSeconds: 60 * 60 * 24 * 30, // 30日間保持
+              },
+              cacheableResponse: {
+                statuses: [0, 200]
+              }
+            },
+          }
+        ],
       }
+
     })
   ],
 })

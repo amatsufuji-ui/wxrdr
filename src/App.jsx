@@ -816,10 +816,25 @@ const WeatherRadarView = ({ navlogData }) => {
 // メインアプリケーション
 // =========================================================================
 export default function App() {
-  const [navlogData, setNavlogData] = useState(null);
+  const [navlogData, setNavlogData] = useState(() => {
+    try {
+      const savedItem = localStorage.getItem('pilotNavlogData');
+      return savedItem ? JSON.parse(savedItem) : null;
+    } catch (error) {
+      console.error("localStorageの読み込みエラー:", error);
+      return null;
+    }
+  });
   const [isLoadModalOpen, setIsLoadModalOpen] = useState(false);
   const [isParsingPdf, setIsParsingPdf] = useState(false);
   const [toastData, setToastData] = useState({ message: '', visible: false });
+
+useEffect(() => {
+    if (navlogData) {
+      localStorage.setItem('pilotNavlogData', JSON.stringify(navlogData));
+    }
+  }, [navlogData]);
+
 
   const showToast = (message) => {
     setToastData({ message, visible: true });

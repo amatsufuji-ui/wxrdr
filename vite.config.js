@@ -5,6 +5,7 @@ import { VitePWA } from 'vite-plugin-pwa' // 追加
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  //base: '/wxrdr/',
   plugins: [
     react(),
     tailwindcss(),

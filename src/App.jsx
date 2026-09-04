@@ -3,12 +3,12 @@ import React, { useState, useEffect, useRef } from 'react';
 // =========================================================================
 // アイコンコンポーネント (外部依存を減らすためSVGをインライン化)
 // =========================================================================
-const IconCloudRain = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><path d="M16 14v6"/><path d="M8 14v6"/><path d="M12 16v6"/></svg>;
-const IconDownloadCloud = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><path d="M12 12v9"/><path d="m8 17 4 4 4-4"/></svg>;
+const IconCloudRain = ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><path d="M16 14v6"/><path d="M8 14v6"/><path d="M12 16v6"/></svg>;
+const IconDownloadCloud = ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><path d="M12 12v9"/><path d="m8 17 4 4 4-4"/></svg>;
 const IconFileText = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>;
 const IconClipboard = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg>;
 const IconLoader2 = ({className}) => <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>;
-const IconPlane = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.2-1.1.6L3 8l6 5-3.5 3.5-2.5-.5-1.5 1.5 4 1 1 4 1.5-1.5-.5-2.5 3.5-3.5 5 6l1.2-.7c.4-.2.7-.6.6-1.1z"/></svg>;
+const IconPlane = ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.2-1.1.6L3 8l6 5-3.5 3.5-2.5-.5-1.5 1.5 4 1 1 4 1.5-1.5-.5-2.5 3.5-3.5 5 6l1.2-.7c.4-.2.7-.6.6-1.1z"/></svg>;
 
 // =========================================================================
 // 緯度経度変換ヘルパー
@@ -147,9 +147,7 @@ const formatRvTime = (unixTime) => {
 
 const formatJmaTime = (basetime) => {
   if (!basetime || basetime.length < 12) return '';
-  const hh = basetime.substring(8, 10);
-  const mm = basetime.substring(10, 12);
-  return `${hh}:${mm}Z`;
+  return `${basetime.substring(8, 10)}:${basetime.substring(10, 12)}Z`;
 };
 
 // =========================================================================
@@ -250,6 +248,16 @@ const parseNavlogText = (text) => {
 };
 
 // =========================================================================
+// APIキャッシュ (タブ切り替えによる不要な再読み込みを防ぐ)
+// =========================================================================
+let apiCache = {
+  rvRadarFrames: null,
+  rvSatFrames: null,
+  jmaFrames: null,
+  timestamp: 0
+};
+
+// =========================================================================
 // UI コンポーネント (Modal & Toast)
 // =========================================================================
 const Toast = ({ message, visible, onClose }) => {
@@ -279,7 +287,7 @@ const LoadDataModal = ({ isOpen, onClose, onFileLoad, onTextLoad, isParsing }) =
             <div className="bg-slate-900 border border-slate-700 rounded-xl p-5 max-w-lg w-full shadow-2xl flex flex-col">
                 <div className="flex justify-between items-center border-b border-slate-700 pb-3 mb-4">
                     <h3 className="text-white font-bold flex items-center gap-2 text-lg">
-                        <span className="text-sky-400"><IconDownloadCloud /></span>
+                        <IconDownloadCloud className="w-5 h-5 text-sky-400" />
                         Load Flight Plan
                     </h3>
                     <button onClick={onClose} className="text-slate-400 hover:text-white font-bold text-2xl leading-none">&times;</button>
@@ -292,7 +300,7 @@ const LoadDataModal = ({ isOpen, onClose, onFileLoad, onTextLoad, isParsing }) =
                         disabled={isParsing} 
                         className="w-full bg-emerald-600 hover:bg-emerald-500 disabled:bg-emerald-800 text-white font-bold py-4 rounded-lg flex items-center justify-center gap-2 transition-colors shadow-lg"
                     >
-                        {isParsing ? <IconLoader2 className="animate-spin" /> : <IconFileText />}
+                        {isParsing ? <IconLoader2 className="animate-spin w-5 h-5" /> : <IconFileText />}
                         {isParsing ? 'Reading PDF...' : 'Upload NAVLOG PDF'}
                     </button>
                 </div>
@@ -315,7 +323,7 @@ const LoadDataModal = ({ isOpen, onClose, onFileLoad, onTextLoad, isParsing }) =
                         disabled={!text.trim()} 
                         className="w-full bg-sky-600 hover:bg-sky-500 disabled:bg-slate-800 disabled:text-slate-500 text-white font-bold py-4 rounded-lg flex items-center justify-center gap-2 transition-colors shadow-lg"
                     >
-                        <span><IconClipboard /></span>
+                        <IconClipboard />
                         Load from Text
                     </button>
                 </div>
@@ -327,7 +335,7 @@ const LoadDataModal = ({ isOpen, onClose, onFileLoad, onTextLoad, isParsing }) =
 // =========================================================================
 // メインマップコンポーネント
 // =========================================================================
-const WeatherRadarView = ({ navlogData }) => {
+export const WeatherRadarView = ({ navlogData }) => {
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const layersRef = useRef({});
@@ -335,10 +343,9 @@ const WeatherRadarView = ({ navlogData }) => {
   // 衛星とレーダーのトグル状態
   const [showHimawari, setShowHimawari] = useState(true);
   const [showGoes, setShowGoes] = useState(true); 
-  const [showCanada, setShowCanada] = useState(true); 
   const [showMeteosat, setShowMeteosat] = useState(true); 
   const [showArctic, setShowArctic] = useState(true); 
-  const [showGlobalIr, setShowGlobalIr] = useState(true); 
+  const [showGlobalIr, setShowGlobalIr] = useState(false); 
   const [showRadar, setShowRadar] = useState(true);
   const [showNavlogRoute, setShowNavlogRoute] = useState(true);
   
@@ -356,10 +363,8 @@ const WeatherRadarView = ({ navlogData }) => {
 
   // レイヤー参照
   const himawariLayerRef = useRef(null);
-  const goesLayerRef = useRef(null); 
-  const canadaLayerRef = useRef(null); 
   const meteosatLayerRef = useRef(null); 
-  const arcticLayerRef = useRef(null);
+  const ssecLayerRef = useRef(null); // GOESとARCTICを統合する共通の全球レイヤー (白飛び解消)
   const globalIrLayerRef = useRef(null);
   const radarLayerRef = useRef(null);
 
@@ -395,26 +400,17 @@ const WeatherRadarView = ({ navlogData }) => {
         if (isMounted && mapContainerRef.current && !mapInstanceRef.current) {
           const L = window.L;
           const map = L.map(mapContainerRef.current, {
-            center: [35.0, 135.0],
-            zoom: 3,
+            center: [25.0, 135.0],
+            zoom: 4,
             zoomControl: false,
             attributionControl: false
           });
 
           L.control.zoom({ position: 'bottomright' }).addTo(map);
 
-          // ベースマップ (ダークベース)
           const darkBase = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
             maxZoom: 16,
             subdomains: 'abcd'
-          }).addTo(map);
-
-          // 都市名・国名を含まない純粋な「国境・海岸線のみ」のベクトルラインレイヤー
-          L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_lines/{z}/{x}/{y}.png', {
-            maxZoom: 16,
-            subdomains: 'abcd',
-            zIndex: 10,
-            className: 'yellow-boundaries'
           }).addTo(map);
 
           mapInstanceRef.current = map;
@@ -422,36 +418,29 @@ const WeatherRadarView = ({ navlogData }) => {
 
           const errImg = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
 
-          // =========================================================================================
-          // ★ 修正核心部: アビエーション・ブルーへのカラー化CSSフィルターを追加 (.sat-blue)
-          // 白黒の衛星画像を、ForeFlightのようなプロ仕様のシアン/ブルーにリアルタイムカラーリングします
-          // =========================================================================================
+          // カラーライズを削除し、全て元の白黒(sat-blend)に設定
           const style = document.createElement('style');
           style.innerHTML = `
             .sat-blend { mix-blend-mode: screen !important; }
-            .sat-blue { mix-blend-mode: screen !important; filter: sepia(100%) hue-rotate(175deg) saturate(350%) brightness(1.2) contrast(1.1); }
             .yellow-boundaries { filter: invert(100%) sepia(100%) saturate(1000%) hue-rotate(15deg) brightness(1.2); opacity: 0.85; pointer-events: none; }
-            .nav-tooltip { background-color: rgba(15, 23, 42, 0.85) !important; border: 1px solid rgba(56, 189, 248, 0.4) !important; color: #e0f2fe !important; font-size: 10px !important; font-weight: bold !important; padding: 2px 6px !important; border-radius: 4px !important; box-shadow: 0 2px 4px rgba(0,0,0,0.5) !important; }
+            .nav-tooltip { background-color: rgba(15, 23, 42, 0.85) !important; border: 1px solid rgba(56, 189, 248, 0.4) !important; color: #e0f2fe !important; font-size: 9px !important; font-weight: bold !important; padding: 1px 4px !important; border-radius: 4px !important; box-shadow: 0 2px 4px rgba(0,0,0,0.5) !important; }
           `;
           document.head.appendChild(style);
 
-          // -----------------------------------------------------------------------------------------
-          // ★ 安定した全球ベース「SSEC Global IR」の共有化 (クラスを sat-blue に変更してカラー化)
-          // -----------------------------------------------------------------------------------------
+          // 白飛び解消: SSEC全球ベースを1枚のレイヤーに統合 (GOES/ARCTIC兼用)
           const ssecGlobalIrUrl = 'https://realearth.ssec.wisc.edu/tiles/globalir/{z}/{x}/{y}.png';
           const ssecOptions = {
             opacity: opacity,
-            maxNativeZoom: 4,  // エラー回避の最重要パラメータ
+            maxNativeZoom: 4,  
             maxZoom: 16,
             zIndex: 1,
-            className: 'sat-blue' // ★ ここで青色フィルターを適用
+            className: 'sat-blend',
+            keepBuffer: 16,
+            updateWhenIdle: true
           };
 
-          arcticLayerRef.current = L.tileLayer(ssecGlobalIrUrl, ssecOptions).addTo(map);
-          canadaLayerRef.current = L.tileLayer(ssecGlobalIrUrl, ssecOptions).addTo(map);
-          goesLayerRef.current = L.tileLayer(ssecGlobalIrUrl, ssecOptions).addTo(map);
+          ssecLayerRef.current = L.tileLayer(ssecGlobalIrUrl, ssecOptions).addTo(map);
 
-          // 欧州 (METEOSAT) も青色にカラーライズ
           meteosatLayerRef.current = L.tileLayer.wms('https://view.eumetsat.int/geoserver/wms', {
             layers: 'msg_fes:ir108',
             format: 'image/png',
@@ -459,17 +448,23 @@ const WeatherRadarView = ({ navlogData }) => {
             version: '1.1.1',
             opacity: opacity,
             zIndex: 2,
-            className: 'sat-blue' // ★ 青色フィルター適用
+            className: 'sat-blend',
+            keepBuffer: 16
           }).addTo(map);
 
-          // RainViewer 依存レイヤー (これも青色にカラーライズ)
-          globalIrLayerRef.current = L.tileLayer(errImg, { opacity: opacity, maxNativeZoom: 5, maxZoom: 16, noWrap: false, errorTileUrl: errImg, zIndex: 1, className: 'sat-blue' }).addTo(map);
+          globalIrLayerRef.current = L.tileLayer(errImg, { opacity: opacity, maxNativeZoom: 5, maxZoom: 16, noWrap: false, errorTileUrl: errImg, zIndex: 1, className: 'sat-blend', keepBuffer: 16 }).addTo(map);
 
-          // JMA Himawari は元々カラー（True Color合成）なので sat-blend のままにする
-          himawariLayerRef.current = L.tileLayer(errImg, { opacity: opacity, maxNativeZoom: 5, maxZoom: 16, noWrap: false, errorTileUrl: errImg, zIndex: 2, className: 'sat-blend' }).addTo(map);
+          himawariLayerRef.current = L.tileLayer(errImg, { opacity: opacity, maxNativeZoom: 5, maxZoom: 16, noWrap: false, errorTileUrl: errImg, zIndex: 2, className: 'sat-blend', keepBuffer: 16 }).addTo(map);
 
-          // 降水レーダー層 (カラーを保つため sat-blend 適用なし)
-          radarLayerRef.current = L.tileLayer(errImg, { opacity: opacity, maxZoom: 16, noWrap: false, errorTileUrl: errImg, zIndex: 3 }).addTo(map);
+          radarLayerRef.current = L.tileLayer(errImg, { opacity: opacity, maxZoom: 16, noWrap: false, errorTileUrl: errImg, zIndex: 3, keepBuffer: 16 }).addTo(map);
+
+          L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_lines/{z}/{x}/{y}.png', {
+            maxZoom: 16,
+            subdomains: 'abcd',
+            zIndex: 10,
+            className: 'yellow-boundaries',
+            keepBuffer: 16
+          }).addTo(map);
 
           setIsMapLoaded(true);
         }
@@ -487,33 +482,50 @@ const WeatherRadarView = ({ navlogData }) => {
         mapInstanceRef.current = null;
       }
     };
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // APIデータの取得
+  // APIデータの取得 (キャッシュを利用)
   useEffect(() => {
-      fetch('https://api.rainviewer.com/public/weather-maps.json', { cache: 'no-store' })
-        .then(res => res.json())
-        .then(data => {
-          const host = data.host || 'https://tilecache.rainviewer.com';
-          if (data.radar && data.radar.past) {
-            setRvRadarFrames(data.radar.past.map(f => ({ ...f, host })));
-          }
-          if (data.satellite && data.satellite.infrared) {
-            const satData = data.satellite.infrared.map(f => ({ ...f, host }));
-            setRvSatFrames(satData);
-          }
-        })
-        .catch(err => console.error("RainViewer API load error:", err));
+      const now = Date.now();
+      
+      // キャッシュが有効なら再フェッチしない
+      if (apiCache.timestamp && (now - apiCache.timestamp < 5 * 60 * 1000) && apiCache.rvSatFrames && apiCache.jmaFrames) {
+          setRvRadarFrames(apiCache.rvRadarFrames);
+          setRvSatFrames(apiCache.rvSatFrames);
+          setJmaFrames(apiCache.jmaFrames);
+          return;
+      }
 
-      fetch('https://www.jma.go.jp/bosai/himawari/data/satimg/targetTimes_fd.json', { cache: 'no-store' })
-        .then(res => res.json())
-        .then(data => {
-          if (Array.isArray(data) && data.length > 0) {
-            const recentFrames = data.slice(-24);
-            setJmaFrames(recentFrames);
+      Promise.all([
+        fetch('https://api.rainviewer.com/public/weather-maps.json', { cache: 'no-store' }).then(r => r.json()).catch(() => null),
+        fetch('https://www.jma.go.jp/bosai/himawari/data/satimg/targetTimes_fd.json', { cache: 'no-store' }).then(r => r.json()).catch(() => null)
+      ]).then(([rvData, jmaData]) => {
+          let newRvRadar = [];
+          let newRvSat = [];
+          let newJma = [];
+
+          if (rvData) {
+              const host = rvData.host || 'https://tilecache.rainviewer.com';
+              if (rvData.radar && rvData.radar.past) newRvRadar = rvData.radar.past.map(f => ({ ...f, host }));
+              if (rvData.satellite && rvData.satellite.infrared) newRvSat = rvData.satellite.infrared.map(f => ({ ...f, host }));
           }
-        })
-        .catch(err => console.error("JMA API load error:", err));
+
+          if (jmaData && Array.isArray(jmaData) && jmaData.length > 0) {
+              const sortedFrames = [...jmaData].sort((a, b) => a.basetime.localeCompare(b.basetime));
+              newJma = sortedFrames.slice(-24);
+          }
+
+          apiCache = {
+              rvRadarFrames: newRvRadar,
+              rvSatFrames: newRvSat,
+              jmaFrames: newJma,
+              timestamp: now
+          };
+
+          setRvRadarFrames(newRvRadar);
+          setRvSatFrames(newRvSat);
+          setJmaFrames(newJma);
+      });
   }, [lastFetchTime]);
 
   // レイヤー数の変化時にスライダーを最新に戻す
@@ -546,6 +558,8 @@ const WeatherRadarView = ({ navlogData }) => {
   const maxFrames = activeLengths.length > 0 ? Math.max(...activeLengths, 1) : 1;
   const safeFrameIndex = Math.max(0, Math.min(frameIndex, maxFrames - 1));
 
+  // タイムライン同期ズレの修正（絶対オフセット方式へ復旧）
+  // 過去データが存在しない古い時間帯は、画像が停止せず正しく非表示になります。
   const getLayerFrameIndex = (layerFramesLength) => {
       if (layerFramesLength <= 1 || maxFrames <= 1) return layerFramesLength - 1;
       const offsetFromNewest = (maxFrames - 1) - safeFrameIndex;
@@ -568,7 +582,7 @@ const WeatherRadarView = ({ navlogData }) => {
 
   // レイヤーのURLとOpacityの更新
   useEffect(() => {
-    if (!isMapLoaded || !himawariLayerRef.current || !goesLayerRef.current || !meteosatLayerRef.current || !arcticLayerRef.current || !globalIrLayerRef.current || !radarLayerRef.current) return;
+    if (!isMapLoaded || !himawariLayerRef.current || !ssecLayerRef.current || !meteosatLayerRef.current || !globalIrLayerRef.current || !radarLayerRef.current) return;
 
     const errImg = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
 
@@ -576,7 +590,7 @@ const WeatherRadarView = ({ navlogData }) => {
     let himawariUrl = errImg;
     if (showHimawari && jmaFrames.length > 0) {
         const idx = getLayerFrameIndex(jmaFrames.length);
-        if (idx >= 0 && jmaFrames[idx]) {
+        if (idx >= 0 && idx < jmaFrames.length) {
             const frame = jmaFrames[idx];
             if (frame && frame.basetime && frame.validtime) {
                 himawariUrl = `https://www.jma.go.jp/bosai/himawari/data/satimg/${frame.basetime}/fd/${frame.validtime}/SND/ETC/{z}/{x}/{y}.jpg`;
@@ -586,37 +600,44 @@ const WeatherRadarView = ({ navlogData }) => {
     if (himawariLayerRef.current._url !== himawariUrl) himawariLayerRef.current.setUrl(himawariUrl);
     himawariLayerRef.current.setOpacity(showHimawari ? opacity : 0);
 
-    // 静的ライブ・WMS Layers (透明度のみ制御)
-    if (goesLayerRef.current) goesLayerRef.current.setOpacity(showGoes ? opacity : 0);
-    if (canadaLayerRef.current) canadaLayerRef.current.setOpacity(showCanada ? opacity : 0);
-    if (arcticLayerRef.current) arcticLayerRef.current.setOpacity(showArctic ? opacity : 0);
-    if (meteosatLayerRef.current) meteosatLayerRef.current.setOpacity(showMeteosat ? opacity : 0);
+    // GOESとARCTICの統合レイヤー (どちらかがONなら表示し、白飛びを防ぐ)
+    if (ssecLayerRef.current) {
+        ssecLayerRef.current.setOpacity((showGoes || showArctic) ? opacity : 0);
+    }
+    
+    if (meteosatLayerRef.current) {
+        meteosatLayerRef.current.setOpacity(showMeteosat ? opacity : 0);
+    }
 
     // RainViewer Global IR Layer
-    let globalUrl = errImg;
+    let globalIrUrl = errImg;
     if (showGlobalIr && rvSatFrames.length > 0) {
         const idx = getLayerFrameIndex(rvSatFrames.length);
-        if (idx >= 0 && rvSatFrames[idx]) {
+        if (idx >= 0 && idx < rvSatFrames.length) {
             const frame = rvSatFrames[idx];
-            globalUrl = `${frame.host}${frame.path}/256/{z}/{x}/{y}/0/0_0.png`;
+            if (frame) {
+                globalIrUrl = `${frame.host}${frame.path}/256/{z}/{x}/{y}/0/0_0.png`;
+            }
         }
     }
-    if (globalIrLayerRef.current._url !== globalUrl) globalIrLayerRef.current.setUrl(globalUrl);
+    if (globalIrLayerRef.current._url !== globalIrUrl) globalIrLayerRef.current.setUrl(globalIrUrl);
     globalIrLayerRef.current.setOpacity(showGlobalIr ? opacity : 0);
 
     // Radar Layer
     let radarUrl = errImg;
     if (showRadar && rvRadarFrames.length > 0) {
         const idx = getLayerFrameIndex(rvRadarFrames.length);
-        if (idx >= 0 && rvRadarFrames[idx]) {
+        if (idx >= 0 && idx < rvRadarFrames.length) {
             const frame = rvRadarFrames[idx];
-            radarUrl = `${frame.host}${frame.path}/256/{z}/{x}/{y}/2/1_1.png`;
+            if (frame) {
+                radarUrl = `${frame.host}${frame.path}/256/{z}/{x}/{y}/2/1_1.png`;
+            }
         }
     }
     if (radarLayerRef.current._url !== radarUrl) radarLayerRef.current.setUrl(radarUrl);
     radarLayerRef.current.setOpacity(showRadar ? opacity : 0);
 
-  }, [isMapLoaded, frameIndex, opacity, showHimawari, showGoes, showCanada, showMeteosat, showArctic, showGlobalIr, showRadar, jmaFrames, rvSatFrames, rvRadarFrames, maxFrames]);
+  }, [isMapLoaded, frameIndex, opacity, showHimawari, showGoes, showMeteosat, showArctic, showGlobalIr, showRadar, jmaFrames, rvSatFrames, rvRadarFrames, maxFrames]);
 
   // ルート描画
   useEffect(() => {
@@ -700,48 +721,49 @@ const WeatherRadarView = ({ navlogData }) => {
 
   if (showHimawari && jmaFrames.length > 0) {
       const idx = getLayerFrameIndex(jmaFrames.length);
-      if (idx >= 0 && jmaFrames[idx]) {
+      if (idx >= 0 && idx < jmaFrames.length && jmaFrames[idx]) {
           currentTimeLabel = formatJmaTime(jmaFrames[idx].validtime || jmaFrames[idx].basetime);
-          activeLayerName = "JMA Himawari-8/9 Cloud Top" + (showGoes || showCanada || showMeteosat || showArctic ? " & Others" : "");
+          activeLayerName = "JMA Himawari-8/9 Cloud Top" + (showGoes || showMeteosat || showArctic ? " & Others" : "");
       }
-  } 
-  if (currentTimeLabel === "OFF" && showGlobalIr && rvSatFrames.length > 0) {
+  } else if (showGlobalIr && rvSatFrames.length > 0) {
       const idx = getLayerFrameIndex(rvSatFrames.length);
-      if (idx >= 0 && rvSatFrames[idx]) {
+      if (idx >= 0 && idx < rvSatFrames.length && rvSatFrames[idx]) {
           currentTimeLabel = formatRvTime(rvSatFrames[idx].time);
           activeLayerName = "RainViewer Global IR";
       }
-  } 
-  if (currentTimeLabel === "OFF" && showRadar && rvRadarFrames.length > 0) {
+  } else if (showRadar && rvRadarFrames.length > 0) {
       const idx = getLayerFrameIndex(rvRadarFrames.length);
-      if (idx >= 0 && rvRadarFrames[idx]) {
+      if (idx >= 0 && idx < rvRadarFrames.length && rvRadarFrames[idx]) {
           currentTimeLabel = formatRvTime(rvRadarFrames[idx].time);
           activeLayerName = "RainViewer Radar Only";
       }
-  } 
-  if (currentTimeLabel === "OFF" && (showGoes || showCanada || showMeteosat || showArctic || showGlobalIr)) {
+  } else if (showGoes || showMeteosat || showArctic) {
       currentTimeLabel = "LIVE";
       let parts = [];
-      if (showGoes) parts.push("GOES(Global)");
-      if (showCanada) parts.push("CANADA(Global)");
-      if (showMeteosat) parts.push("Meteosat");
-      if (showArctic) parts.push("ARCTIC(Global)");
       
-      if (showGlobalIr && rvSatFrames.length === 0) {
-         parts.push("RV-IR(Unavailable)");
-      } else if (showGlobalIr) {
-         parts.push("RV-IR");
+      if (showGoes && showArctic) {
+          parts.push("GOES/ARCTIC(Global)");
+      } else if (showGoes) {
+          parts.push("GOES(Global)");
+      } else if (showArctic) {
+          parts.push("ARCTIC(Global)");
       }
       
+      if (showMeteosat) parts.push("Meteosat");
       activeLayerName = parts.join(" + ");
   }
 
   return (
-    <div className="flex flex-col w-full h-full bg-slate-950 relative overflow-hidden text-slate-200">
+    <div className="flex flex-col w-full h-[85vh] min-h-[500px] bg-slate-950 rounded-xl border border-slate-800 relative shadow-lg overflow-hidden">
       <div className="w-full flex items-center justify-between p-2 bg-slate-900 border-b border-slate-800 text-xs flex-wrap gap-2 z-[2000] shadow-md relative">
-        <div className="flex items-center gap-3 flex-wrap text-[11px] w-full lg:w-auto overflow-x-auto">
+        <div className="flex items-center gap-2 shrink-0">
+          <IconCloudRain className="w-4 h-4 text-sky-400" />
+          <span className="font-bold text-white tracking-wide">WXRDR</span>
+        </div>
+
+        <div className="flex items-center gap-3 flex-wrap text-[11px]">
           {maxFrames > 1 && (
-            <div className="flex items-center gap-1.5 bg-slate-800 px-2 py-1 rounded border border-slate-700 shrink-0">
+            <div className="flex items-center gap-1.5 bg-slate-800 px-2 py-1 rounded border border-slate-700">
               <button 
                 onClick={() => setIsPlaying(!isPlaying)} 
                 className="text-sky-400 hover:text-white flex items-center justify-center w-4 h-4 mr-1"
@@ -763,7 +785,7 @@ const WeatherRadarView = ({ navlogData }) => {
             </div>
           )}
 
-          <div className="flex items-center gap-1 bg-slate-800 px-2 py-1 rounded border border-slate-700 shrink-0">
+          <div className="flex items-center gap-1 bg-slate-800 px-2 py-1 rounded border border-slate-700">
             <span className="text-slate-400 font-bold">Dev:</span>
             <select
               value={deviationNM}
@@ -777,10 +799,14 @@ const WeatherRadarView = ({ navlogData }) => {
               <option value={40} className="bg-slate-900">40 NM</option>
               <option value={50} className="bg-slate-900">50 NM</option>
               <option value={60} className="bg-slate-900">60 NM</option>
+              <option value={70} className="bg-slate-900">70 NM</option>
+              <option value={80} className="bg-slate-900">80 NM</option>
+              <option value={90} className="bg-slate-900">90 NM</option>
+              <option value={100} className="bg-slate-900">100 NM</option>
             </select>
           </div>
 
-          <div className="flex items-center gap-1.5 bg-slate-800 px-2 py-1 rounded border border-slate-700 shrink-0">
+          <div className="flex items-center gap-1.5 bg-slate-800 px-2 py-1 rounded border border-slate-700">
             <span className="text-slate-400 font-bold">Trans:</span>
             <input
               type="range"
@@ -793,37 +819,68 @@ const WeatherRadarView = ({ navlogData }) => {
             />
           </div>
 
-          <div className="flex items-center gap-2 bg-slate-800 px-2 py-1 rounded border border-slate-700 flex-wrap shrink-0">
+          <div className="flex items-center gap-2 bg-slate-800 px-2 py-1 rounded border border-slate-700 flex-wrap">
             <label className="flex items-center gap-1 cursor-pointer select-none text-slate-300 hover:text-white" title="アジア・西太平洋">
-              <input type="checkbox" checked={showHimawari} onChange={(e) => setShowHimawari(e.target.checked)} className="accent-sky-500 rounded" />
+              <input
+                type="checkbox"
+                checked={showHimawari}
+                onChange={(e) => setShowHimawari(e.target.checked)}
+                className="accent-sky-500 rounded"
+              />
               <span>HIMAWARI</span>
             </label>
-            <label className="flex items-center gap-1 cursor-pointer select-none text-slate-300 hover:text-white" title="北米・南米・太平洋・大西洋をカバー">
-              <input type="checkbox" checked={showGoes} onChange={(e) => setShowGoes(e.target.checked)} className="accent-sky-500 rounded" />
-              <span>GOES</span>
-            </label>
-            <label className="flex items-center gap-1 cursor-pointer select-none text-slate-300 hover:text-white" title="カナダ全域・アラスカ・グリーンランドを強力にカバー">
-              <input type="checkbox" checked={showCanada} onChange={(e) => setShowCanada(e.target.checked)} className="accent-sky-500 rounded" />
-              <span className="font-bold text-emerald-300">CANADA</span>
-            </label>
             <label className="flex items-center gap-1 cursor-pointer select-none text-slate-300 hover:text-white" title="欧州・中東・アフリカ・インド洋(トルコ〜中国)">
-              <input type="checkbox" checked={showMeteosat} onChange={(e) => setShowMeteosat(e.target.checked)} className="accent-sky-500 rounded" />
+              <input
+                type="checkbox"
+                checked={showMeteosat}
+                onChange={(e) => setShowMeteosat(e.target.checked)}
+                className="accent-sky-500 rounded"
+              />
               <span>METEOSAT</span>
             </label>
+            <label className="flex items-center gap-1 cursor-pointer select-none text-slate-300 hover:text-white" title="北米・南米・太平洋">
+              <input
+                type="checkbox"
+                checked={showGoes}
+                onChange={(e) => setShowGoes(e.target.checked)}
+                className="accent-sky-500 rounded"
+              />
+              <span>GOES</span>
+            </label>
             <label className="flex items-center gap-1 cursor-pointer select-none text-slate-300 hover:text-white" title="極軌道衛星を含む全球IR（北極圏・カナダ北部・グリーンランドを強力にカバー）">
-              <input type="checkbox" checked={showArctic} onChange={(e) => setShowArctic(e.target.checked)} className="accent-sky-500 rounded" />
+              <input
+                type="checkbox"
+                checked={showArctic}
+                onChange={(e) => setShowArctic(e.target.checked)}
+                className="accent-sky-500 rounded"
+              />
               <span className="font-bold text-sky-200">ARCTIC(Global)</span>
             </label>
             <label className="flex items-center gap-1 cursor-pointer select-none text-slate-300 hover:text-white border-l border-slate-600 pl-2" title="RainViewerの全球IR">
-              <input type="checkbox" checked={showGlobalIr} onChange={(e) => setShowGlobalIr(e.target.checked)} className="accent-sky-500 rounded" />
+              <input
+                type="checkbox"
+                checked={showGlobalIr}
+                onChange={(e) => setShowGlobalIr(e.target.checked)}
+                className="accent-sky-500 rounded"
+              />
               <span>RV-IR</span>
             </label>
             <label className="flex items-center gap-1 cursor-pointer select-none text-slate-300 hover:text-white" title="降水レーダー(陸上主体)">
-              <input type="checkbox" checked={showRadar} onChange={(e) => setShowRadar(e.target.checked)} className="accent-sky-500 rounded" />
+              <input
+                type="checkbox"
+                checked={showRadar}
+                onChange={(e) => setShowRadar(e.target.checked)}
+                className="accent-sky-500 rounded"
+              />
               <span>RADAR</span>
             </label>
             <label className="flex items-center gap-1 cursor-pointer select-none text-slate-300 hover:text-white border-l border-slate-600 pl-2">
-              <input type="checkbox" checked={showNavlogRoute} onChange={(e) => setShowNavlogRoute(e.target.checked)} className="accent-sky-500 rounded" />
+              <input
+                type="checkbox"
+                checked={showNavlogRoute}
+                onChange={(e) => setShowNavlogRoute(e.target.checked)}
+                className="accent-sky-500 rounded"
+              />
               <span className="font-bold text-sky-400">Route</span>
             </label>
           </div>
@@ -831,20 +888,20 @@ const WeatherRadarView = ({ navlogData }) => {
       </div>
 
       <div className="flex-1 relative w-full h-full z-0">
-        <div ref={mapContainerRef} className="absolute inset-0 bg-slate-900" />
+        <div ref={mapContainerRef} className="absolute inset-0" />
         
-        <div className="absolute bottom-4 left-4 z-[1000] bg-slate-900/90 border border-slate-700/80 rounded-lg p-3 backdrop-blur-sm text-xs text-slate-300 font-mono pointer-events-none space-y-1 shadow-xl min-w-[220px]">
-          <div className="flex items-center justify-between text-sky-400 font-bold border-b border-slate-700 pb-2 mb-2">
+        <div className="absolute bottom-3 left-3 z-[1000] bg-slate-900/90 border border-slate-700/80 rounded-lg p-2.5 backdrop-blur-sm text-[10px] text-slate-300 font-mono pointer-events-none space-y-1 shadow-xl min-w-[200px]">
+          <div className="flex items-center justify-between text-sky-400 font-bold border-b border-slate-700 pb-1 mb-1">
             <span>RADAR & SAT SYNC</span>
-            <span className="text-[10px] bg-sky-950 border border-sky-800 text-sky-300 px-1.5 py-0.5 rounded ml-2">{currentTimeLabel}</span>
+            <span className="text-[9px] bg-sky-950 border border-sky-800 text-sky-300 px-1 rounded ml-2">{currentTimeLabel}</span>
           </div>
-          <div className="leading-tight">
+          <div>
             {activeLayerName}
           </div>
-          {navlogData && (navlogData.fNo || navlogData.depIcao || navlogData.destIcao) && (
-            <div className="text-amber-300 font-bold border-t border-slate-800 pt-2 mt-2 flex justify-between gap-4">
-              <span>{navlogData.fNo || 'ROUTE'} : {navlogData.depIcao || 'DEP'} &rarr; {navlogData.destIcao || 'ARR'}</span>
-              {deviationNM > 0 && <span className="text-violet-400">DEV ±{deviationNM}</span>}
+          {navlogData && navlogData.fNo && (
+            <div className="text-amber-300 font-bold border-t border-slate-800 pt-1 mt-1 flex justify-between gap-4">
+              <span>{navlogData.fNo} : {navlogData.depIcao || 'DEP'} &rarr; {navlogData.destIcao || 'ARR'}</span>
+              {deviationNM > 0 && <span className="text-violet-400">DEV ±{deviationNM}NM</span>}
             </div>
           )}
         </div>
@@ -952,7 +1009,7 @@ export default function App() {
       <header className="flex items-center justify-between px-4 py-3 bg-slate-900 border-b border-slate-800 shrink-0">
         <div className="flex items-center gap-3">
           <span className="text-sky-400 bg-sky-900/30 p-1.5 rounded-lg border border-sky-800">
-            <IconPlane />
+            <IconPlane className="w-5 h-5 text-sky-400" />
           </span>
           <h1 className="text-white font-black text-lg tracking-wide hidden sm:block">GLOBAL WX RADAR</h1>
           <h1 className="text-white font-black text-lg tracking-wide sm:hidden">WX RADAR</h1>
@@ -962,7 +1019,7 @@ export default function App() {
             onClick={() => setIsLoadModalOpen(true)} 
             className="bg-sky-600 hover:bg-sky-500 text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors shadow-lg border border-sky-400/30 text-sm"
         >
-            <IconDownloadCloud />
+            <IconDownloadCloud className="w-4 h-4" />
             <span>Load Plan</span>
         </button>
       </header>

@@ -147,7 +147,9 @@ const formatRvTime = (unixTime) => {
 
 const formatJmaTime = (basetime) => {
   if (!basetime || basetime.length < 12) return '';
-  return `${basetime.substring(8, 10)}:${basetime.substring(10, 12)}Z`;
+  const hh = basetime.substring(8, 10);
+  const mm = basetime.substring(10, 12);
+  return `${hh}:${mm}Z`;
 };
 
 // =========================================================================
@@ -333,9 +335,10 @@ const WeatherRadarView = ({ navlogData }) => {
   // 衛星とレーダーのトグル状態
   const [showHimawari, setShowHimawari] = useState(true);
   const [showGoes, setShowGoes] = useState(true); 
+  const [showCanada, setShowCanada] = useState(true); 
   const [showMeteosat, setShowMeteosat] = useState(true); 
   const [showArctic, setShowArctic] = useState(true); 
-  const [showGlobalIr, setShowGlobalIr] = useState(false); 
+  const [showGlobalIr, setShowGlobalIr] = useState(true); 
   const [showRadar, setShowRadar] = useState(true);
   const [showNavlogRoute, setShowNavlogRoute] = useState(true);
   
@@ -354,6 +357,7 @@ const WeatherRadarView = ({ navlogData }) => {
   // レイヤー参照
   const himawariLayerRef = useRef(null);
   const goesLayerRef = useRef(null); 
+  const canadaLayerRef = useRef(null); 
   const meteosatLayerRef = useRef(null); 
   const arcticLayerRef = useRef(null);
   const globalIrLayerRef = useRef(null);
@@ -399,9 +403,18 @@ const WeatherRadarView = ({ navlogData }) => {
 
           L.control.zoom({ position: 'bottomright' }).addTo(map);
 
+          // ベースマップ (ダークベース)
           const darkBase = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
             maxZoom: 16,
             subdomains: 'abcd'
+          }).addTo(map);
+
+          // 都市名・国名を含まない純粋な「国境・海岸線のみ」のベクトルラインレイヤー
+          L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_lines/{z}/{x}/{y}.png', {
+            maxZoom: 16,
+            subdomains: 'abcd',
+            zIndex: 10,
+            className: 'yellow-boundaries'
           }).addTo(map);
 
           mapInstanceRef.current = map;
@@ -409,36 +422,53 @@ const WeatherRadarView = ({ navlogData }) => {
 
           const errImg = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
 
-          // CSSクラス適用用のスタイルタグを挿入
+          // =========================================================================================
+          // ★ 修正核心部: アビエーション・ブルーへのカラー化CSSフィルターを追加 (.sat-blue)
+          // 白黒の衛星画像を、ForeFlightのようなプロ仕様のシアン/ブルーにリアルタイムカラーリングします
+          // =========================================================================================
           const style = document.createElement('style');
           style.innerHTML = `
-            .sat-blend { mix-blend-mode: screen; }
+            .sat-blend { mix-blend-mode: screen !important; }
+            .sat-blue { mix-blend-mode: screen !important; filter: sepia(100%) hue-rotate(175deg) saturate(350%) brightness(1.2) contrast(1.1); }
+            .yellow-boundaries { filter: invert(100%) sepia(100%) saturate(1000%) hue-rotate(15deg) brightness(1.2); opacity: 0.85; pointer-events: none; }
             .nav-tooltip { background-color: rgba(15, 23, 42, 0.85) !important; border: 1px solid rgba(56, 189, 248, 0.4) !important; color: #e0f2fe !important; font-size: 10px !important; font-weight: bold !important; padding: 2px 6px !important; border-radius: 4px !important; box-shadow: 0 2px 4px rgba(0,0,0,0.5) !important; }
           `;
           document.head.appendChild(style);
 
-          meteosatLayerRef.current = L.tileLayer.wms('https://view.eumetsat.int/geoserver/ows', {
-            layers: 'msg_fes:ir108,msg_iodc:ir108',
+          // -----------------------------------------------------------------------------------------
+          // ★ 安定した全球ベース「SSEC Global IR」の共有化 (クラスを sat-blue に変更してカラー化)
+          // -----------------------------------------------------------------------------------------
+          const ssecGlobalIrUrl = 'https://realearth.ssec.wisc.edu/tiles/globalir/{z}/{x}/{y}.png';
+          const ssecOptions = {
+            opacity: opacity,
+            maxNativeZoom: 4,  // エラー回避の最重要パラメータ
+            maxZoom: 16,
+            zIndex: 1,
+            className: 'sat-blue' // ★ ここで青色フィルターを適用
+          };
+
+          arcticLayerRef.current = L.tileLayer(ssecGlobalIrUrl, ssecOptions).addTo(map);
+          canadaLayerRef.current = L.tileLayer(ssecGlobalIrUrl, ssecOptions).addTo(map);
+          goesLayerRef.current = L.tileLayer(ssecGlobalIrUrl, ssecOptions).addTo(map);
+
+          // 欧州 (METEOSAT) も青色にカラーライズ
+          meteosatLayerRef.current = L.tileLayer.wms('https://view.eumetsat.int/geoserver/wms', {
+            layers: 'msg_fes:ir108',
             format: 'image/png',
             transparent: true,
-            version: '1.3.0',
+            version: '1.1.1',
             opacity: opacity,
             zIndex: 2,
-            className: 'sat-blend'
+            className: 'sat-blue' // ★ 青色フィルター適用
           }).addTo(map);
 
-          arcticLayerRef.current = L.tileLayer.wms('https://realearth.ssec.wisc.edu/wms/', {
-            layers: 'globalir',
-            format: 'image/png',
-            transparent: true,
-            opacity: opacity,
-            zIndex: 1,
-            className: 'sat-blend'
-          }).addTo(map);
+          // RainViewer 依存レイヤー (これも青色にカラーライズ)
+          globalIrLayerRef.current = L.tileLayer(errImg, { opacity: opacity, maxNativeZoom: 5, maxZoom: 16, noWrap: false, errorTileUrl: errImg, zIndex: 1, className: 'sat-blue' }).addTo(map);
 
+          // JMA Himawari は元々カラー（True Color合成）なので sat-blend のままにする
           himawariLayerRef.current = L.tileLayer(errImg, { opacity: opacity, maxNativeZoom: 5, maxZoom: 16, noWrap: false, errorTileUrl: errImg, zIndex: 2, className: 'sat-blend' }).addTo(map);
-          goesLayerRef.current = L.tileLayer(errImg, { opacity: opacity, maxNativeZoom: 5, maxZoom: 16, noWrap: false, errorTileUrl: errImg, zIndex: 2, className: 'sat-blend' }).addTo(map);
-          globalIrLayerRef.current = L.tileLayer(errImg, { opacity: opacity, maxNativeZoom: 5, maxZoom: 16, noWrap: false, errorTileUrl: errImg, zIndex: 1, className: 'sat-blend' }).addTo(map);
+
+          // 降水レーダー層 (カラーを保つため sat-blend 適用なし)
           radarLayerRef.current = L.tileLayer(errImg, { opacity: opacity, maxZoom: 16, noWrap: false, errorTileUrl: errImg, zIndex: 3 }).addTo(map);
 
           setIsMapLoaded(true);
@@ -479,8 +509,7 @@ const WeatherRadarView = ({ navlogData }) => {
         .then(res => res.json())
         .then(data => {
           if (Array.isArray(data) && data.length > 0) {
-            const sortedFrames = [...data].reverse();
-            const recentFrames = sortedFrames.slice(-24);
+            const recentFrames = data.slice(-24);
             setJmaFrames(recentFrames);
           }
         })
@@ -491,9 +520,9 @@ const WeatherRadarView = ({ navlogData }) => {
   useEffect(() => {
       setIsPlaying(false);
       let activeLengths = [];
-      if (showHimawari) activeLengths.push(jmaFrames.length);
-      if (showGlobalIr) activeLengths.push(rvSatFrames.length);
-      if (showRadar) activeLengths.push(rvRadarFrames.length);
+      if (showHimawari && jmaFrames.length > 0) activeLengths.push(jmaFrames.length);
+      if (showGlobalIr && rvSatFrames.length > 0) activeLengths.push(rvSatFrames.length);
+      if (showRadar && rvRadarFrames.length > 0) activeLengths.push(rvRadarFrames.length);
       const mFrames = activeLengths.length > 0 ? Math.max(...activeLengths, 1) : 1;
       setFrameIndex(mFrames - 1);
   }, [showHimawari, showGlobalIr, showRadar, jmaFrames.length, rvSatFrames.length, rvRadarFrames.length]);
@@ -510,16 +539,17 @@ const WeatherRadarView = ({ navlogData }) => {
 
   // 同期フレームとURLの決定
   let activeLengths = [];
-  if (showHimawari) activeLengths.push(jmaFrames.length);
-  if (showGlobalIr) activeLengths.push(rvSatFrames.length);
-  if (showRadar) activeLengths.push(rvRadarFrames.length);
+  if (showHimawari && jmaFrames.length > 0) activeLengths.push(jmaFrames.length);
+  if (showGlobalIr && rvSatFrames.length > 0) activeLengths.push(rvSatFrames.length);
+  if (showRadar && rvRadarFrames.length > 0) activeLengths.push(rvRadarFrames.length);
   
   const maxFrames = activeLengths.length > 0 ? Math.max(...activeLengths, 1) : 1;
   const safeFrameIndex = Math.max(0, Math.min(frameIndex, maxFrames - 1));
 
   const getLayerFrameIndex = (layerFramesLength) => {
       if (layerFramesLength <= 1 || maxFrames <= 1) return layerFramesLength - 1;
-      return Math.floor((safeFrameIndex / (maxFrames - 1)) * (layerFramesLength - 1));
+      const offsetFromNewest = (maxFrames - 1) - safeFrameIndex;
+      return (layerFramesLength - 1) - offsetFromNewest; 
   };
 
   // アニメーションループ
@@ -545,52 +575,48 @@ const WeatherRadarView = ({ navlogData }) => {
     // Himawari Layer
     let himawariUrl = errImg;
     if (showHimawari && jmaFrames.length > 0) {
-        const idx = Math.max(0, Math.min(getLayerFrameIndex(jmaFrames.length), jmaFrames.length - 1));
-        const frame = jmaFrames[idx];
-        if (frame && frame.basetime && frame.validtime) {
-            himawariUrl = `https://www.jma.go.jp/bosai/himawari/data/satimg/${frame.basetime}/fd/${frame.validtime}/SND/ETC/{z}/{x}/{y}.jpg`;
+        const idx = getLayerFrameIndex(jmaFrames.length);
+        if (idx >= 0 && jmaFrames[idx]) {
+            const frame = jmaFrames[idx];
+            if (frame && frame.basetime && frame.validtime) {
+                himawariUrl = `https://www.jma.go.jp/bosai/himawari/data/satimg/${frame.basetime}/fd/${frame.validtime}/SND/ETC/{z}/{x}/{y}.jpg`;
+            }
         }
     }
     if (himawariLayerRef.current._url !== himawariUrl) himawariLayerRef.current.setUrl(himawariUrl);
     himawariLayerRef.current.setOpacity(showHimawari ? opacity : 0);
 
-    // GOES Layer
-    let goesUrl = errImg;
-    if (showGoes) {
-        goesUrl = `https://mesonet.agron.iastate.edu/cache/tile.py/1.0.0/goes-ir-4km-900913/{z}/{x}/{y}.png`;
-    }
-    if (goesLayerRef.current._url !== goesUrl) goesLayerRef.current.setUrl(goesUrl);
-    goesLayerRef.current.setOpacity(showGoes ? opacity : 0);
+    // 静的ライブ・WMS Layers (透明度のみ制御)
+    if (goesLayerRef.current) goesLayerRef.current.setOpacity(showGoes ? opacity : 0);
+    if (canadaLayerRef.current) canadaLayerRef.current.setOpacity(showCanada ? opacity : 0);
+    if (arcticLayerRef.current) arcticLayerRef.current.setOpacity(showArctic ? opacity : 0);
+    if (meteosatLayerRef.current) meteosatLayerRef.current.setOpacity(showMeteosat ? opacity : 0);
 
-    // WMS Layers
-    meteosatLayerRef.current.setOpacity(showMeteosat ? opacity : 0);
-    arcticLayerRef.current.setOpacity(showArctic ? opacity : 0);
-
-    // Global IR Layer
-    let globalIrUrl = errImg;
+    // RainViewer Global IR Layer
+    let globalUrl = errImg;
     if (showGlobalIr && rvSatFrames.length > 0) {
-        const idx = Math.max(0, Math.min(getLayerFrameIndex(rvSatFrames.length), rvSatFrames.length - 1));
-        const frame = rvSatFrames[idx];
-        if (frame) {
-            globalIrUrl = `${frame.host}${frame.path}/256/{z}/{x}/{y}/0/0_0.png`;
+        const idx = getLayerFrameIndex(rvSatFrames.length);
+        if (idx >= 0 && rvSatFrames[idx]) {
+            const frame = rvSatFrames[idx];
+            globalUrl = `${frame.host}${frame.path}/256/{z}/{x}/{y}/0/0_0.png`;
         }
     }
-    if (globalIrLayerRef.current._url !== globalIrUrl) globalIrLayerRef.current.setUrl(globalIrUrl);
+    if (globalIrLayerRef.current._url !== globalUrl) globalIrLayerRef.current.setUrl(globalUrl);
     globalIrLayerRef.current.setOpacity(showGlobalIr ? opacity : 0);
 
     // Radar Layer
     let radarUrl = errImg;
     if (showRadar && rvRadarFrames.length > 0) {
-        const idx = Math.max(0, Math.min(getLayerFrameIndex(rvRadarFrames.length), rvRadarFrames.length - 1));
-        const frame = rvRadarFrames[idx];
-        if (frame) {
+        const idx = getLayerFrameIndex(rvRadarFrames.length);
+        if (idx >= 0 && rvRadarFrames[idx]) {
+            const frame = rvRadarFrames[idx];
             radarUrl = `${frame.host}${frame.path}/256/{z}/{x}/{y}/2/1_1.png`;
         }
     }
     if (radarLayerRef.current._url !== radarUrl) radarLayerRef.current.setUrl(radarUrl);
     radarLayerRef.current.setOpacity(showRadar ? opacity : 0);
 
-  }, [isMapLoaded, frameIndex, opacity, showHimawari, showGoes, showMeteosat, showArctic, showGlobalIr, showRadar, jmaFrames, rvSatFrames, rvRadarFrames, maxFrames]);
+  }, [isMapLoaded, frameIndex, opacity, showHimawari, showGoes, showCanada, showMeteosat, showArctic, showGlobalIr, showRadar, jmaFrames, rvSatFrames, rvRadarFrames, maxFrames]);
 
   // ルート描画
   useEffect(() => {
@@ -673,29 +699,40 @@ const WeatherRadarView = ({ navlogData }) => {
   let activeLayerName = "No Layer Selected";
 
   if (showHimawari && jmaFrames.length > 0) {
-      const idx = Math.max(0, Math.min(getLayerFrameIndex(jmaFrames.length), jmaFrames.length - 1));
-      if (jmaFrames[idx]) {
+      const idx = getLayerFrameIndex(jmaFrames.length);
+      if (idx >= 0 && jmaFrames[idx]) {
           currentTimeLabel = formatJmaTime(jmaFrames[idx].validtime || jmaFrames[idx].basetime);
-          activeLayerName = "JMA Himawari-8/9 Cloud Top" + (showGoes || showMeteosat || showArctic ? " & Others" : "");
+          activeLayerName = "JMA Himawari-8/9 Cloud Top" + (showGoes || showCanada || showMeteosat || showArctic ? " & Others" : "");
       }
-  } else if (showGlobalIr && rvSatFrames.length > 0) {
-      const idx = Math.max(0, Math.min(getLayerFrameIndex(rvSatFrames.length), rvSatFrames.length - 1));
-      if (rvSatFrames[idx]) {
+  } 
+  if (currentTimeLabel === "OFF" && showGlobalIr && rvSatFrames.length > 0) {
+      const idx = getLayerFrameIndex(rvSatFrames.length);
+      if (idx >= 0 && rvSatFrames[idx]) {
           currentTimeLabel = formatRvTime(rvSatFrames[idx].time);
           activeLayerName = "RainViewer Global IR";
       }
-  } else if (showRadar && rvRadarFrames.length > 0) {
-      const idx = Math.max(0, Math.min(getLayerFrameIndex(rvRadarFrames.length), rvRadarFrames.length - 1));
-      if (rvRadarFrames[idx]) {
+  } 
+  if (currentTimeLabel === "OFF" && showRadar && rvRadarFrames.length > 0) {
+      const idx = getLayerFrameIndex(rvRadarFrames.length);
+      if (idx >= 0 && rvRadarFrames[idx]) {
           currentTimeLabel = formatRvTime(rvRadarFrames[idx].time);
           activeLayerName = "RainViewer Radar Only";
       }
-  } else if (showGoes || showMeteosat || showArctic) {
+  } 
+  if (currentTimeLabel === "OFF" && (showGoes || showCanada || showMeteosat || showArctic || showGlobalIr)) {
       currentTimeLabel = "LIVE";
       let parts = [];
-      if (showGoes) parts.push("GOES");
+      if (showGoes) parts.push("GOES(Global)");
+      if (showCanada) parts.push("CANADA(Global)");
       if (showMeteosat) parts.push("Meteosat");
-      if (showArctic) parts.push("SSEC(Arctic)");
+      if (showArctic) parts.push("ARCTIC(Global)");
+      
+      if (showGlobalIr && rvSatFrames.length === 0) {
+         parts.push("RV-IR(Unavailable)");
+      } else if (showGlobalIr) {
+         parts.push("RV-IR");
+      }
+      
       activeLayerName = parts.join(" + ");
   }
 
@@ -761,9 +798,13 @@ const WeatherRadarView = ({ navlogData }) => {
               <input type="checkbox" checked={showHimawari} onChange={(e) => setShowHimawari(e.target.checked)} className="accent-sky-500 rounded" />
               <span>HIMAWARI</span>
             </label>
-            <label className="flex items-center gap-1 cursor-pointer select-none text-slate-300 hover:text-white" title="北米・南米・太平洋">
+            <label className="flex items-center gap-1 cursor-pointer select-none text-slate-300 hover:text-white" title="北米・南米・太平洋・大西洋をカバー">
               <input type="checkbox" checked={showGoes} onChange={(e) => setShowGoes(e.target.checked)} className="accent-sky-500 rounded" />
               <span>GOES</span>
+            </label>
+            <label className="flex items-center gap-1 cursor-pointer select-none text-slate-300 hover:text-white" title="カナダ全域・アラスカ・グリーンランドを強力にカバー">
+              <input type="checkbox" checked={showCanada} onChange={(e) => setShowCanada(e.target.checked)} className="accent-sky-500 rounded" />
+              <span className="font-bold text-emerald-300">CANADA</span>
             </label>
             <label className="flex items-center gap-1 cursor-pointer select-none text-slate-300 hover:text-white" title="欧州・中東・アフリカ・インド洋(トルコ〜中国)">
               <input type="checkbox" checked={showMeteosat} onChange={(e) => setShowMeteosat(e.target.checked)} className="accent-sky-500 rounded" />
@@ -829,12 +870,11 @@ export default function App() {
   const [isParsingPdf, setIsParsingPdf] = useState(false);
   const [toastData, setToastData] = useState({ message: '', visible: false });
 
-useEffect(() => {
+  useEffect(() => {
     if (navlogData) {
       localStorage.setItem('pilotNavlogData', JSON.stringify(navlogData));
     }
   }, [navlogData]);
-
 
   const showToast = (message) => {
     setToastData({ message, visible: true });
@@ -849,7 +889,6 @@ useEffect(() => {
     const reader = new FileReader();
     reader.onload = async (event) => {
       try {
-        // 動的にPDF.jsをロード
         if (!window.pdfjsLib) {
           const script = document.createElement('script');
           script.src = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js";

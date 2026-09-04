@@ -12,6 +12,7 @@ const IconPlane = ({ className }) => <svg className={className} xmlns="http://ww
 
 // =========================================================================
 // 緯度経度変換ヘルパー
+// メモ: NAVLOGから抽出された正確な緯度経度(latLon)を最優先でプロットします。
 // =========================================================================
 const parseWaypointToLatLng = (wpObj) => {
   if (!wpObj) return null;
@@ -343,10 +344,10 @@ export const WeatherRadarView = ({ navlogData }) => {
   // 衛星とレーダーのトグル状態
   const [showHimawari, setShowHimawari] = useState(true);
   const [showGoes, setShowGoes] = useState(true); 
-  const [showMeteosat, setShowMeteosat] = useState(true); 
+  const [showMeteosat, setShowMeteosat] = useState(false); 
   const [showArctic, setShowArctic] = useState(true); 
   const [showGlobalIr, setShowGlobalIr] = useState(false); 
-  const [showRadar, setShowRadar] = useState(true);
+  const [showRadar, setShowRadar] = useState(false);
   const [showNavlogRoute, setShowNavlogRoute] = useState(true);
   
   const [opacity, setOpacity] = useState(0.65);
@@ -363,8 +364,9 @@ export const WeatherRadarView = ({ navlogData }) => {
 
   // レイヤー参照
   const himawariLayerRef = useRef(null);
+  const goesLayerRef = useRef(null);   // ★ 米国広域カラー画像用 (IEM)
   const meteosatLayerRef = useRef(null); 
-  const ssecLayerRef = useRef(null); // GOESとARCTICを統合する共通の全球レイヤー (白飛び解消)
+  const arcticLayerRef = useRef(null); // ★ 全球・北極圏白黒画像用 (SSEC)
   const globalIrLayerRef = useRef(null);
   const radarLayerRef = useRef(null);
 
@@ -418,7 +420,7 @@ export const WeatherRadarView = ({ navlogData }) => {
 
           const errImg = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
 
-          // カラーライズを削除し、全て元の白黒(sat-blend)に設定
+          // カラーフィルターは使わず、元の色調をそのまま透過・合成する
           const style = document.createElement('style');
           style.innerHTML = `
             .sat-blend { mix-blend-mode: screen !important; }
@@ -427,19 +429,33 @@ export const WeatherRadarView = ({ navlogData }) => {
           `;
           document.head.appendChild(style);
 
-          // 白飛び解消: SSEC全球ベースを1枚のレイヤーに統合 (GOES/ARCTIC兼用)
+          // ========================================================================
+          // ★ 修正核心部: GOESとARCTICを完全に分離し、それぞれ独立したレイヤーに設定
+          // ========================================================================
+          
+          // 1. ARCTICレイヤー: SSEC全球IRベース (白黒画像・一番下に敷く)
           const ssecGlobalIrUrl = 'https://realearth.ssec.wisc.edu/tiles/globalir/{z}/{x}/{y}.png';
-          const ssecOptions = {
+          arcticLayerRef.current = L.tileLayer(ssecGlobalIrUrl, {
             opacity: opacity,
             maxNativeZoom: 4,  
             maxZoom: 16,
-            zIndex: 1,
+            zIndex: 1, // ★ zIndex: 1
             className: 'sat-blend',
             keepBuffer: 16,
             updateWhenIdle: true
-          };
+          }).addTo(map);
 
-          ssecLayerRef.current = L.tileLayer(ssecGlobalIrUrl, ssecOptions).addTo(map);
+          // 2. GOESレイヤー: IEMベース (米国周辺のカラー強調画像・ARCTICの上に重ねる)
+          const iemGoesUrl = 'https://mesonet.agron.iastate.edu/cache/tile.py/1.0.0/goes-ir-4km-900913/{z}/{x}/{y}.png';
+          goesLayerRef.current = L.tileLayer(iemGoesUrl, {
+            opacity: opacity,
+            maxNativeZoom: 5,
+            maxZoom: 16,
+            zIndex: 2, // ★ zIndex: 2 (全球白黒の上にカラーを被せる)
+            className: 'sat-blend', 
+            keepBuffer: 16,
+            updateWhenIdle: true
+          }).addTo(map);
 
           meteosatLayerRef.current = L.tileLayer.wms('https://view.eumetsat.int/geoserver/wms', {
             layers: 'msg_fes:ir108',
@@ -453,9 +469,7 @@ export const WeatherRadarView = ({ navlogData }) => {
           }).addTo(map);
 
           globalIrLayerRef.current = L.tileLayer(errImg, { opacity: opacity, maxNativeZoom: 5, maxZoom: 16, noWrap: false, errorTileUrl: errImg, zIndex: 1, className: 'sat-blend', keepBuffer: 16 }).addTo(map);
-
           himawariLayerRef.current = L.tileLayer(errImg, { opacity: opacity, maxNativeZoom: 5, maxZoom: 16, noWrap: false, errorTileUrl: errImg, zIndex: 2, className: 'sat-blend', keepBuffer: 16 }).addTo(map);
-
           radarLayerRef.current = L.tileLayer(errImg, { opacity: opacity, maxZoom: 16, noWrap: false, errorTileUrl: errImg, zIndex: 3, keepBuffer: 16 }).addTo(map);
 
           L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_lines/{z}/{x}/{y}.png', {
@@ -558,8 +572,6 @@ export const WeatherRadarView = ({ navlogData }) => {
   const maxFrames = activeLengths.length > 0 ? Math.max(...activeLengths, 1) : 1;
   const safeFrameIndex = Math.max(0, Math.min(frameIndex, maxFrames - 1));
 
-  // タイムライン同期ズレの修正（絶対オフセット方式へ復旧）
-  // 過去データが存在しない古い時間帯は、画像が停止せず正しく非表示になります。
   const getLayerFrameIndex = (layerFramesLength) => {
       if (layerFramesLength <= 1 || maxFrames <= 1) return layerFramesLength - 1;
       const offsetFromNewest = (maxFrames - 1) - safeFrameIndex;
@@ -582,11 +594,11 @@ export const WeatherRadarView = ({ navlogData }) => {
 
   // レイヤーのURLとOpacityの更新
   useEffect(() => {
-    if (!isMapLoaded || !himawariLayerRef.current || !ssecLayerRef.current || !meteosatLayerRef.current || !globalIrLayerRef.current || !radarLayerRef.current) return;
+    if (!isMapLoaded || !himawariLayerRef.current || !arcticLayerRef.current || !goesLayerRef.current || !meteosatLayerRef.current || !globalIrLayerRef.current || !radarLayerRef.current) return;
 
     const errImg = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
 
-    // Himawari Layer
+    // Himawari Layer (雲頂強調画像 SND/ETC - 強い雲のみカラー)
     let himawariUrl = errImg;
     if (showHimawari && jmaFrames.length > 0) {
         const idx = getLayerFrameIndex(jmaFrames.length);
@@ -600,11 +612,16 @@ export const WeatherRadarView = ({ navlogData }) => {
     if (himawariLayerRef.current._url !== himawariUrl) himawariLayerRef.current.setUrl(himawariUrl);
     himawariLayerRef.current.setOpacity(showHimawari ? opacity : 0);
 
-    // GOESとARCTICの統合レイヤー (どちらかがONなら表示し、白飛びを防ぐ)
-    if (ssecLayerRef.current) {
-        ssecLayerRef.current.setOpacity((showGoes || showArctic) ? opacity : 0);
+    // ★ ARCTIC (全球白黒画像 SSEC) を制御
+    if (arcticLayerRef.current) {
+        arcticLayerRef.current.setOpacity(showArctic ? opacity : 0);
     }
     
+    // ★ GOES (米国カラー画像 IEM) を制御
+    if (goesLayerRef.current) {
+        goesLayerRef.current.setOpacity(showGoes ? opacity : 0);
+    }
+
     if (meteosatLayerRef.current) {
         meteosatLayerRef.current.setOpacity(showMeteosat ? opacity : 0);
     }
@@ -741,15 +758,11 @@ export const WeatherRadarView = ({ navlogData }) => {
       currentTimeLabel = "LIVE";
       let parts = [];
       
-      if (showGoes && showArctic) {
-          parts.push("GOES/ARCTIC(Global)");
-      } else if (showGoes) {
-          parts.push("GOES(Global)");
-      } else if (showArctic) {
-          parts.push("ARCTIC(Global)");
-      }
-      
+      // ★ ラベルも「Color」と「B/W」で明確に区別
+      if (showGoes) parts.push("GOES(Color)");
+      if (showArctic) parts.push("ARCTIC(B/W)");
       if (showMeteosat) parts.push("Meteosat");
+      
       activeLayerName = parts.join(" + ");
   }
 
@@ -820,7 +833,7 @@ export const WeatherRadarView = ({ navlogData }) => {
           </div>
 
           <div className="flex items-center gap-2 bg-slate-800 px-2 py-1 rounded border border-slate-700 flex-wrap">
-            <label className="flex items-center gap-1 cursor-pointer select-none text-slate-300 hover:text-white" title="アジア・西太平洋">
+            <label className="flex items-center gap-1 cursor-pointer select-none text-slate-300 hover:text-white" title="アジア・西太平洋 (強い雨雲のみ赤や黄色で表示)">
               <input
                 type="checkbox"
                 checked={showHimawari}
@@ -838,7 +851,7 @@ export const WeatherRadarView = ({ navlogData }) => {
               />
               <span>METEOSAT</span>
             </label>
-            <label className="flex items-center gap-1 cursor-pointer select-none text-slate-300 hover:text-white" title="北米・南米・太平洋">
+            <label className="flex items-center gap-1 cursor-pointer select-none text-slate-300 hover:text-white" title="米国周辺をカラー強調表示 (IEM)">
               <input
                 type="checkbox"
                 checked={showGoes}
@@ -847,7 +860,7 @@ export const WeatherRadarView = ({ navlogData }) => {
               />
               <span>GOES</span>
             </label>
-            <label className="flex items-center gap-1 cursor-pointer select-none text-slate-300 hover:text-white" title="極軌道衛星を含む全球IR（北極圏・カナダ北部・グリーンランドを強力にカバー）">
+            <label className="flex items-center gap-1 cursor-pointer select-none text-slate-300 hover:text-white" title="北極圏・カナダ等を含む全球カバー (SSEC白黒画像)">
               <input
                 type="checkbox"
                 checked={showArctic}

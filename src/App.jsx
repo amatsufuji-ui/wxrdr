@@ -17,8 +17,49 @@ const AIRSPACE_DATA = [
     { name: 'ITRA-N1', type: 'restricted', alt: 'FL180', coords: [[35.5706, 132.1753], [35.3500, 132.1353], [35.3269, 132.2653], [35.1164, 130.1892], [35.5525, 130.7639]] },
     { name: 'ITRA-N2', type: 'restricted', alt: 'FL800', coords: [[35.3269, 132.2653], [35.3014, 132.3139], [35.2919, 132.3372], [35.0375, 131.9897], [34.7236, 131.3769], [34.6864, 130.8808], [34.7253, 130.8669], [34.8531, 130.5850], [34.7697, 130.5253], [34.9953, 130.0311], [35.1164, 130.1892]] },
     { name: 'ITRA-N3', type: 'restricted', alt: 'FL240', coords: [[35.3014, 132.3139], [35.2919, 132.3372], [35.0375, 131.9897], [34.7236, 131.3769], [34.7208, 131.3386], [35.0353, 131.6914], [35.2103, 131.7392], [35.2906, 132.2003]] },
-    { name: 'ITRA-S (S10-S25)', type: 'restricted', alt: 'S10: FL800, S11-16: UNL, S20-25: FL450', coords: [[31.5119, 132.1558], [31.4203, 132.1308], [31.0703, 132.1308], [30.8072, 132.3775], [30.5222, 132.5867], [29.9272, 131.7381], [30.2008, 131.5011], [30.4875, 131.2867], [30.9519, 131.6467], [31.8653, 132.4597], [32.0036, 132.5753], [32.0536, 132.6308], [32.0767, 132.7872], [32.3019, 133.4381], [32.5667, 133.9397], [32.5900, 133.9867], [32.6200, 134.0475], [32.7803, 134.5333], [32.8981, 135.0139], [32.5911, 135.0139], [32.5536, 135.0139], [32.1533, 135.0094], [31.8147, 134.4939], [31.5056, 134.0289], [31.1425, 133.4878], [30.9178, 133.1606], [31.1994, 132.9542], [31.4211, 133.2839]] },
-    { name: 'ITRA-S (S30-S33)', type: 'restricted', alt: 'FL250', coords: [[31.1994, 132.9542], [30.9178, 133.1606], [31.1425, 133.4878], [30.5547, 133.9217], [30.3222, 133.5889], [29.9183, 133.0250], [29.4689, 132.4039], [29.9272, 131.7381], [30.5222, 132.5867]] },
+    // ITRA-S のポリゴン自己交差を解消した完全な一筆書き座標
+    { name: 'ITRA-S (S10-S25)', type: 'restricted', alt: 'S10: FL800, S11-16: UNL, S20-25: FL450', 
+      coords: [
+        [30.9519, 131.6467], // (39)
+        [31.5119, 132.1558], // (9)
+        [32.0036, 132.5808], // (10)
+        [32.0536, 132.6308], // (11)
+        [32.0822, 132.7872], // (26)
+        [32.3019, 133.4381], // (16)
+        [32.5667, 133.9397], // (17)
+        [32.5897, 133.9867], // (41)
+        [32.6200, 134.0475], // (18)
+        [32.7803, 134.5333], // (19)
+        [32.8981, 135.0139], // (1)
+        [32.5911, 135.0139], // (40)
+        [32.5536, 135.0139], // (20)
+        [32.1533, 135.0094], // (21)
+        [31.8147, 134.4939], // (23)
+        [31.5056, 134.0289], // (25)
+        [31.1425, 133.4906], // (28)
+        [30.9178, 133.1606], // (32)
+        [30.5222, 132.5867], // (36)
+        [29.9272, 131.7381], // (4)
+        [30.2008, 131.5011], // (5)
+        [30.4875, 131.2867]  // (38)
+      ] 
+    },
+    { name: 'ITRA-S (S30-S33)', type: 'restricted', alt: 'FL250', 
+      coords: [
+        [29.9272, 131.7381], // (4)
+        [30.5222, 132.5867], // (36)
+        [30.9178, 133.1606], // (32)
+        [31.1425, 133.4906], // (28)
+        [31.5056, 134.0289], // (25)
+        [31.8147, 134.4939], // (23)
+        [32.1533, 135.0094], // (21)
+        [31.3019, 135.0000], // (2)
+        [30.5547, 133.9217], // (29)
+        [30.3222, 133.5889], // (33)
+        [29.9183, 133.0250], // (37)
+        [29.4689, 132.4039]  // (3)
+      ] 
+    },
     { name: 'MOOSE NORTH', type: 'training', alt: 'SFC - UNL', coords: [[26.9758, 124.9558], [28.4786, 127.0542], [27.8033, 127.3211], [27.2986, 127.2208], [27.0842, 126.9942], [26.6953, 125.2111]] },
     { name: 'MOOSE SOUTH', type: 'training', alt: 'SFC - UNL', coords: [[26.6953, 125.2111], [27.0842, 126.9942], [26.2675, 126.1431], [26.2389, 125.6219]] },
     { name: 'TIGER WEST', type: 'training', alt: 'SFC - UNL', coords: [[26.7900, 129.0672], [27.4686, 129.5064], [27.6461, 130.5586]] },
@@ -148,7 +189,6 @@ const normalizeLongitudes = (latlngs) => {
     return latlngs;
 };
 
-// ラインの180度またぎ（アンチメリディアン）修正
 const fixAntiMeridian = (feature) => {
     const fixLine = (coords) => {
         if (!coords || !coords.length) return;
@@ -185,7 +225,7 @@ const formatJmaTime = (basetime) => {
 };
 
 // =========================================================================
-// NAVLOG テキスト解析 (高度のStep Up/Downの完全追従強化版)
+// NAVLOG テキスト解析 (高度のStep Up/Downの完全追従)
 // =========================================================================
 const parseNavlogText = (text) => {
     let newPlan = [];
@@ -195,6 +235,10 @@ const parseNavlogText = (text) => {
     const routeMatch = text.match(/([A-Z]{4})\s*-\s*([A-Z]{4})/);
     const depIcao = routeMatch ? routeMatch[1] : null;
     const destIcao = routeMatch ? routeMatch[2] : null;
+
+    let currentFl = 350;
+    const globalFlMatch = text.match(/FL\s*([1-4]\d{2})/i) || text.match(/F([1-4]\d{2})\b/i);
+    if (globalFlMatch) currentFl = parseInt(globalFlMatch[1], 10);
 
     let cleanTextForWp = text;
     const logStartIndex = cleanTextForWp.indexOf('WSCP');
@@ -207,16 +251,11 @@ const parseNavlogText = (text) => {
     let pendingLat = null; 
     let pendingLatLon = null;
 
-    // 全体から最初のフォールバックFLを推測しておく
-    let currentFl = 350;
-    const globalFlMatch = text.match(/FL\s*([1-4]\d{2})/i) || text.match(/F([1-4]\d{2})\b/i);
-    if (globalFlMatch) currentFl = parseInt(globalFlMatch[1], 10);
-
     for (let i = 0; i < tokens.length; i++) {
         let token = tokens[i];
         let cleanToken = token.replace(/^-+/, '').replace(/-+$/, '');
 
-        // --- 高度の随時更新（上昇・下降問わず） ---
+        // 高度変更の即時反映 (39000, F390, FL390 など、明確なものだけ抽出)
         let foundFl = 0;
         if (cleanToken === "FL" && tokens[i+1] && tokens[i+1].match(/^[1-4]\d{2}$/)) {
             foundFl = parseInt(tokens[i+1], 10);
@@ -225,15 +264,11 @@ const parseNavlogText = (text) => {
         } else if (cleanToken.match(/^FL([1-4]\d{2})$/i)) {
             foundFl = parseInt(cleanToken.match(/^FL([1-4]\d{2})$/i)[1], 10);
         } else if (cleanToken.match(/^([1-4]\d{2})00$/)) {
-            // 39000 等の5桁表記のみを高度として認識し、180-04 等の誤認識を防止
             foundFl = parseInt(cleanToken.substring(0, 3), 10);
         }
-        
-        if (foundFl >= 100 && foundFl <= 600) {
-            currentFl = foundFl;
-        }
+        if (foundFl >= 100 && foundFl <= 600) currentFl = foundFl;
 
-        // スラッシュ表記からの高度抽出 (例: 54N150W/M084F390)
+        // スラッシュ付き（例: 54N150W/M084F390）からの抽出
         let wpNameCandidate = cleanToken;
         if (cleanToken.includes('/')) {
             const parts = cleanToken.split('/');
@@ -270,7 +305,7 @@ const parseNavlogText = (text) => {
         if (!isCoord && (isAlphaWp || isArincWp || isSpecialWp)) {
             if (newPlan.length > 0 && newPlan[newPlan.length - 1].wp === wpNameCandidate) continue;
 
-            // そのWP周辺（少し後方）に高度指定がないか探す（ステップダウンにも対応）
+            // 周辺（少し後方）に高度指定がないか探す
             let wpFl = currentFl;
             for (let j = i; j <= Math.min(tokens.length - 1, i + 8); j++) {
                 let t = tokens[j].replace(/^-+/, '').replace(/-+$/, '');
@@ -284,13 +319,12 @@ const parseNavlogText = (text) => {
                     wpFl = parseInt(t.match(/^FL([1-4]\d{2})$/i)[1], 10);
                     break;
                 } else if (t.match(/^([1-4]\d{2})00$/)) {
-                    // 周辺探索でも 39000 等の5桁表記のみを高度として認識
                     wpFl = parseInt(t.substring(0, 3), 10);
                     break;
                 }
             }
             
-            currentFl = wpFl; // 周辺で見つかったFLを現在のFLとして適用
+            currentFl = wpFl; 
 
             pendingLat = null;
             newPlan.push({ wp: wpNameCandidate, latLon: pendingLatLon, fl: currentFl });
@@ -517,21 +551,8 @@ const CrossSectionView = ({ routeData, weatherData, timeIndex }) => {
         }
     });
 
-    // 高度プロファイルのパス生成
-    let profilePath = "";
-    if (pointsWithDist.length > 0) {
-        profilePath = `M ${getX(pointsWithDist[0].accDist)},${getY(pointsWithDist[0].fl || 0)}`;
-        for (let i = 1; i < pointsWithDist.length; i++) {
-            const prev = pointsWithDist[i - 1];
-            const curr = pointsWithDist[i];
-            if (prev.fl !== curr.fl) {
-                profilePath += ` L ${getX(curr.accDist)},${getY(prev.fl || 0)}`;
-            }
-            profilePath += ` L ${getX(curr.accDist)},${getY(curr.fl || 0)}`;
-        }
-    }
+    const profilePath = pointsWithDist.map(wp => `${getX(wp.accDist)},${getY(wp.fl || 0)}`).join(' L ');
 
-    // マウスホイールでのズーム制御
     const handleWheel = (e) => {
         if (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return; 
         e.preventDefault();
@@ -539,10 +560,7 @@ const CrossSectionView = ({ routeData, weatherData, timeIndex }) => {
         const zoomSensitivity = 0.05;
         let delta = e.deltaY > 0 ? -zoomSensitivity : zoomSensitivity;
         
-        setZoomLevel(prevZoom => {
-            let newZoom = prevZoom + delta;
-            return Math.max(1, Math.min(5, newZoom)); // 100% ~ 500%
-        });
+        setZoomLevel(prevZoom => Math.max(1, Math.min(5, prevZoom + delta)));
     };
 
     return (
@@ -580,7 +598,7 @@ const CrossSectionView = ({ routeData, weatherData, timeIndex }) => {
                         <g>{isotachLines}</g>
                         <g>{windArrows}</g>
                         
-                        <path d={profilePath} fill="none" stroke="#d946ef" strokeWidth="2.5" />
+                        <path d={`M ${profilePath}`} fill="none" stroke="#d946ef" strokeWidth="2.5" />
                         
                         {pointsWithDist.map((wp, idx) => (
                             <g key={`wp-${idx}`} transform={`translate(${getX(wp.accDist)}, ${innerHeight + PADDING_Y_TOP})`}>
@@ -595,7 +613,6 @@ const CrossSectionView = ({ routeData, weatherData, timeIndex }) => {
         </div>
     );
 };
-
 
 // =========================================================================
 // メインマップコンポーネント
@@ -854,23 +871,21 @@ const WeatherRadarView = ({ navlogData }) => {
     const loadFIRs = async () => {
         try {
             const res = await fetch('https://raw.githubusercontent.com/vatsimnetwork/vatspy-data-project/master/Boundaries.geojson');
-            if (!res.ok) throw new Error("FIR Fetch Failed");
+            if (!res.ok) {
+                console.warn(`FIR Fetch Failed: ${res.status}`);
+                return; 
+            }
             
             const data = await res.json();
             
-            if (data.features) {
+            if (data && data.features) {
                 data.features.forEach(feature => { fixAntiMeridian(feature); });
             }
 
             const firLayer = L.geoJSON(data, {
                 style: function (feature) {
                     const isOceanic = feature.properties?.name?.toLowerCase().includes('oceanic') || feature.properties?.name?.toLowerCase().includes('pacific');
-                    return { 
-                        color: '#f97316', 
-                        weight: isOceanic ? 2.0 : 1.0, 
-                        dashArray: '', 
-                        fillOpacity: 0 
-                    };
+                    return { color: '#f97316', weight: isOceanic ? 2.0 : 1.0, dashArray: '', fillOpacity: 0 };
                 },
                 onEachFeature: function (feature, layer) {
                     if (feature.properties?.name) {
@@ -964,6 +979,9 @@ const WeatherRadarView = ({ navlogData }) => {
   );
 };
 
+// =========================================================================
+// メインアプリケーション
+// =========================================================================
 export default function App() {
   const [navlogData, setNavlogData] = useState(null);
   const [routeWps, setRouteWps] = useState([]); 

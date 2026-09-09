@@ -10,16 +10,21 @@ const IconLoader2 = ({className}) => <svg className={className} xmlns="http://ww
 const IconPlane = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.2-1.1.6L3 8l6 5-3.5 3.5-2.5-.5-1.5 1.5 4 1 1 4 1.5-1.5-.5-2.5 3.5-3.5 5 6l1.2-.7c.4-.2.7-.6.6-1.1z"/></svg>;
 
 // =========================================================================
-// 訓練空域・臨時留保空域 (AIRSPACE DATA)
+// 訓練空域・臨時留保空域・制限空域 (AIRSPACE DATA)
+// type: 'itra'(黄色), 'training'(青色), 'restricted'(赤色)
 // =========================================================================
 const AIRSPACE_DATA = [
-    { name: 'ITRA-E', type: 'restricted', alt: 'FL250', coords: [[36.1536, 131.5753], [35.8286, 132.2222], [35.5706, 132.1753], [35.5525, 130.7639]] },
-    { name: 'ITRA-N1', type: 'restricted', alt: 'FL180', coords: [[35.5706, 132.1753], [35.3500, 132.1353], [35.3269, 132.2653], [35.1164, 130.1892], [35.5525, 130.7639]] },
-    { name: 'ITRA-N2', type: 'restricted', alt: 'FL800', coords: [[35.3269, 132.2653], [35.3014, 132.3139], [35.2919, 132.3372], [35.0375, 131.9897], [34.7236, 131.3769], [34.6864, 130.8808], [34.7253, 130.8669], [34.8531, 130.5850], [34.7697, 130.5253], [34.9953, 130.0311], [35.1164, 130.1892]] },
-    { name: 'ITRA-N3', type: 'restricted', alt: 'FL240', coords: [[35.3014, 132.3139], [35.2919, 132.3372], [35.0375, 131.9897], [34.7236, 131.3769], [34.7208, 131.3386], [35.0353, 131.6914], [35.2103, 131.7392], [35.2906, 132.2003]] },
-    // ITRA-S のポリゴン自己交差を解消した完全な一筆書き座標
-    { name: 'ITRA-S (S10-S25)', type: 'restricted', alt: 'S10: FL800, S11-16: UNL, S20-25: FL450', 
+    // --- 臨時留保空域 (ITRA / 準ずるエリア) ---
+    { name: 'ITRA-E', type: 'itra', alt: 'FL250', coords: [[36.1536, 131.5753], [35.8286, 132.2222], [35.5706, 132.1753], [35.5525, 130.7639]] },
+    { name: 'ITRA-N1', type: 'itra', alt: 'FL180', coords: [[35.5706, 132.1753], [35.3500, 132.1353], [35.3269, 132.2653], [35.1164, 130.1892], [35.5525, 130.7639]] },
+    { name: 'ITRA-N2', type: 'itra', alt: 'FL800', coords: [[35.3269, 132.2653], [35.3014, 132.3139], [35.2919, 132.3372], [35.0375, 131.9897], [34.7236, 131.3769], [34.6864, 130.8808], [34.7253, 130.8669], [34.8531, 130.5850], [34.7697, 130.5253], [34.9953, 130.0311], [35.1164, 130.1892]] },
+    { name: 'ITRA-N3', type: 'itra', alt: 'FL240', coords: [[35.3014, 132.3139], [35.2919, 132.3372], [35.0375, 131.9897], [34.7236, 131.3769], [34.7208, 131.3386], [35.0353, 131.6914], [35.2103, 131.7392], [35.2906, 132.2003]] },
+    
+    // ITRA-S (マクロポイントによる3ブロック分割: 変更なし維持)
+    { name: 'ITRA-S (S11-S16)', type: 'itra', alt: 'S11-16: UNL', 
       coords: [
+        [30.2008, 131.5011], // (5)
+        [30.4875, 131.2867], // (38)
         [30.9519, 131.6467], // (39)
         [31.5119, 132.1558], // (9)
         [32.0036, 132.5808], // (10)
@@ -32,34 +37,27 @@ const AIRSPACE_DATA = [
         [32.7803, 134.5333], // (19)
         [32.8981, 135.0139], // (1)
         [32.5911, 135.0139], // (40)
-        [32.5536, 135.0139], // (20)
-        [32.1533, 135.0094], // (21)
-        [31.8147, 134.4939], // (23)
-        [31.5056, 134.0289], // (25)
-        [31.1425, 133.4906], // (28)
-        [30.9178, 133.1606], // (32)
-        [30.5222, 132.5867], // (36)
-        [29.9272, 131.7381], // (4)
-        [30.2008, 131.5011], // (5)
-        [30.4875, 131.2867]  // (38)
+        [32.5536, 135.0139]  // (20)
       ] 
     },
-    { name: 'ITRA-S (S30-S33)', type: 'restricted', alt: 'FL250', 
+    { name: 'ITRA-S (S20-S25)', type: 'itra', alt: 'S20-25: FL450', 
+      coords: [
+        [30.2008, 131.5011], // (5)
+        [32.5536, 135.0139], // (20)
+        [32.1533, 135.0094], // (21)
+        [29.9272, 131.7381]  // (4)
+      ] 
+    },
+    { name: 'ITRA-S (S30-S33)', type: 'itra', alt: 'FL250', 
       coords: [
         [29.9272, 131.7381], // (4)
-        [30.5222, 132.5867], // (36)
-        [30.9178, 133.1606], // (32)
-        [31.1425, 133.4906], // (28)
-        [31.5056, 134.0289], // (25)
-        [31.8147, 134.4939], // (23)
         [32.1533, 135.0094], // (21)
         [31.3019, 135.0000], // (2)
-        [30.5547, 133.9217], // (29)
-        [30.3222, 133.5889], // (33)
-        [29.9183, 133.0250], // (37)
         [29.4689, 132.4039]  // (3)
       ] 
     },
+
+    // --- 訓練空域 (TRAINING - 青色) ---
     { name: 'MOOSE NORTH', type: 'training', alt: 'SFC - UNL', coords: [[26.9758, 124.9558], [28.4786, 127.0542], [27.8033, 127.3211], [27.2986, 127.2208], [27.0842, 126.9942], [26.6953, 125.2111]] },
     { name: 'MOOSE SOUTH', type: 'training', alt: 'SFC - UNL', coords: [[26.6953, 125.2111], [27.0842, 126.9942], [26.2675, 126.1431], [26.2389, 125.6219]] },
     { name: 'TIGER WEST', type: 'training', alt: 'SFC - UNL', coords: [[26.7900, 129.0672], [27.4686, 129.5064], [27.6461, 130.5586]] },
@@ -69,12 +67,39 @@ const AIRSPACE_DATA = [
     { name: 'LION CENTER', type: 'training', alt: 'SFC - UNL', coords: [[25.5186, 128.1647], [24.3911, 129.4597], [23.7003, 128.9464], [24.3797, 127.3061]] },
     { name: 'EAGLE CENTER', type: 'training', alt: 'SFC - UNL', coords: [[25.8931, 128.5000], [25.8103, 129.0386], [25.7375, 129.4311], [25.7458, 130.4036], [25.7397, 130.5003], [24.6639, 129.6653], [24.3911, 129.4597], [25.5186, 128.1647]] },
     { name: 'EAGLE EAST', type: 'training', alt: 'SFC - UNL', coords: [[25.7397, 130.5003], [25.7108, 130.9244], [25.1539, 130.4914], [24.9411, 130.2981], [24.6639, 129.6653]] },
-    { name: 'JDA K-1-1', type: 'training', alt: 'SFC - FL240', coords: [[35.1381, 138.6919], [34.8767, 138.7636], [34.8361, 138.3811], [35.1411, 138.5803]] },
-    { name: 'JDA K-1-2', type: 'training', alt: 'SFC - FL260', coords: [[34.8767, 138.7636], [34.4089, 138.9328], [34.3314, 138.8353], [34.5083, 138.4550], [34.8361, 138.3811]] },
-    { name: 'JDA K-1-3', type: 'training', alt: 'SFC - FL310', coords: [[34.8361, 138.3811], [34.5083, 138.4550], [33.8825, 138.0069], [33.5133, 137.8936], [34.2567, 137.4919]] },
-    { name: 'JDA K-2', type: 'training', alt: 'SFC - FL240', coords: [[34.5083, 138.4550], [34.3314, 138.8353], [33.5161, 138.9333], [31.5167, 138.2583], [31.5167, 137.1417], [33.5133, 137.8936], [33.8825, 138.0069]] },
+    
+    // JDA K AREA (形状維持)
+    { name: 'JDA K-1-1', type: 'training', alt: 'SFC - FL240', coords: [[34.3928, 137.4781], [34.3939, 137.6031], [34.2317, 137.9358], [34.0364, 138.0208], [33.9925, 138.0147], [33.9472, 137.7603], [34.0628, 137.6875]] },
+    { name: 'JDA K-1-2', type: 'training', alt: 'SFC - FL260', coords: [[34.3900, 137.1739], [34.3928, 137.4781], [34.0628, 137.6875], [34.2153, 137.3739], [34.1922, 137.0861], [34.2000, 136.9956]] },
+    { name: 'JDA K-1-3', type: 'training', alt: 'SFC - FL310', coords: [[33.7822, 136.6042], [34.2000, 136.9956], [34.1922, 137.0861], [34.2153, 137.3739], [34.0628, 137.6875], [33.9472, 137.7603], [33.8400, 137.1744], [33.8244, 137.0900]] },
+    { name: 'JDA K-2', type: 'training', alt: 'SFC - FL240', coords: [[33.9925, 138.0147], [33.1636, 137.9000], [32.9558, 137.2678], [32.9069, 136.7975], [33.5469, 136.3858], [33.7822, 136.6042], [33.8244, 137.0900], [33.8400, 137.1744], [33.9472, 137.7603]] },
+    
     { name: 'Shizuhama', type: 'training', alt: 'SFC - FL240', coords: [[35.1411, 138.6919], [35.1367, 138.5792], [34.8478, 138.2372], [34.8778, 138.7636], [34.8686, 138.7803]] },
-    { name: 'Hyakuri Nr.1-6', type: 'training', alt: 'SFC - FL240', coords: [[36.2517, 142.0592], [36.6786, 142.1753], [37.1564, 142.3581], [37.7733, 142.5850], [38.1697, 142.6883], [38.1697, 142.9908], [37.7794, 142.6861], [37.3200, 142.9908], [36.2500, 142.9908]] }
+    { name: 'HYAKURI Area 1', type: 'training', alt: 'SFC - 5000', coords: [[36.2517, 142.0592], [36.6786, 142.1753], [37.1564, 142.3581], [37.7733, 142.5850], [38.1697, 142.6883], [38.1697, 142.9908], [37.7794, 142.6861], [37.3200, 142.9908], [36.2500, 142.9908]] },
+    { name: 'AREA P-1', type: 'training', alt: 'UNL', coords: [[32.0033, 129.5811], [31.3036, 129.5811], [30.3703, 127.9981], [32.5033, 127.1981], [32.5033, 127.4981], [34.0031, 128.6311], [34.3447, 128.9128], [33.8494, 129.3356], [33.8367, 129.3644], [33.1700, 128.9978], [33.0033, 128.4978], [32.3200, 128.4978]] },
+    { name: 'AREA G-1', type: 'training', alt: 'UNL', coords: [[40.0025, 135.9964], [39.8358, 135.9967], [39.0525, 136.9969], [39.0028, 136.9969], [38.9197, 137.1633], [38.6889, 137.4739], [38.1958, 137.9969], [38.0697, 137.9969], [36.3961, 134.4503], [36.4267, 133.8633], [36.8336, 133.0878], [36.9500, 133.0778], [37.8844, 132.9972], [38.0028, 132.9972], [40.0025, 135.3261]] },
+
+    // --- 制限・警告空域 (RESTRICTED / WARNING - 赤色) ---
+    { name: 'R-144 ENSHUNADA', type: 'restricted', alt: 'SFC - 49213', coords: [[34.2153, 137.3739], [34.0628, 137.6875], [33.9472, 137.7603], [33.8400, 137.1744], [34.1922, 137.0861]] },
+    { name: 'R-121 CENTRAL HONSHU', type: 'restricted', alt: 'SFC - 35000', coords: [[36.6697, 141.0800], [36.6697, 141.3467], [36.0033, 141.3467], [36.0033, 141.0800]] },
+    
+    // 修正: R-109 Area LIMA ご指定の順番で構成
+    { name: 'R-109 Area LIMA', type: 'restricted', alt: 'SFC - UNL', 
+      coords: [
+        [32.0286, 132.6308], // 320143N/1323751E
+        [32.1536, 132.9975], // 320913N/1325951E
+        [31.8036, 132.9975], // 314813N/1325951E
+        [32.0369, 133.4975], // 320213N/1332951E
+        [31.7036, 133.4975], // 314213N/1332951E
+        [31.0703, 132.1308], // 310413N/1320751E
+        [31.4203, 132.1308], // 312513N/1320751E
+        [31.6369, 132.6308]  // 313813N/1323751E
+      ] 
+    },
+    { name: 'R-533', type: 'restricted', alt: 'SFC - UNL', coords: [[31.4203, 132.1308], [31.5119, 132.1558], [32.0036, 132.5808], [32.0536, 132.6308], [31.6369, 132.6308]] },
+    { name: 'R-104 Area Golf', type: 'restricted', alt: 'SFC - 20000', coords: [[33.5867, 128.4144], [33.9367, 128.9311], [33.7033, 129.1644], [33.3533, 128.6478]] },
+    { name: 'R-105 Area Foxtrot', type: 'restricted', alt: 'SFC - UNL', coords: [[32.3367, 128.7644], [32.3367, 129.1644], [31.7867, 129.1644], [31.7867, 128.7644]] },
+    { name: 'R-134 KYUSHU', type: 'restricted', alt: 'SFC - 35000', coords: [[34.8531, 130.5850], [34.7253, 130.8669], [34.1478, 130.4836], [34.2825, 130.2103]] }
 ];
 
 // =========================================================================
@@ -255,7 +280,6 @@ const parseNavlogText = (text) => {
         let token = tokens[i];
         let cleanToken = token.replace(/^-+/, '').replace(/-+$/, '');
 
-        // 高度変更の即時反映 (39000, F390, FL390 など、明確なものだけ抽出)
         let foundFl = 0;
         if (cleanToken === "FL" && tokens[i+1] && tokens[i+1].match(/^[1-4]\d{2}$/)) {
             foundFl = parseInt(tokens[i+1], 10);
@@ -266,9 +290,9 @@ const parseNavlogText = (text) => {
         } else if (cleanToken.match(/^([1-4]\d{2})00$/)) {
             foundFl = parseInt(cleanToken.substring(0, 3), 10);
         }
+        
         if (foundFl >= 100 && foundFl <= 600) currentFl = foundFl;
 
-        // スラッシュ付き（例: 54N150W/M084F390）からの抽出
         let wpNameCandidate = cleanToken;
         if (cleanToken.includes('/')) {
             const parts = cleanToken.split('/');
@@ -305,7 +329,6 @@ const parseNavlogText = (text) => {
         if (!isCoord && (isAlphaWp || isArincWp || isSpecialWp)) {
             if (newPlan.length > 0 && newPlan[newPlan.length - 1].wp === wpNameCandidate) continue;
 
-            // 周辺（少し後方）に高度指定がないか探す
             let wpFl = currentFl;
             for (let j = i; j <= Math.min(tokens.length - 1, i + 8); j++) {
                 let t = tokens[j].replace(/^-+/, '').replace(/-+$/, '');
@@ -556,10 +579,8 @@ const CrossSectionView = ({ routeData, weatherData, timeIndex }) => {
     const handleWheel = (e) => {
         if (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return; 
         e.preventDefault();
-        
         const zoomSensitivity = 0.05;
         let delta = e.deltaY > 0 ? -zoomSensitivity : zoomSensitivity;
-        
         setZoomLevel(prevZoom => Math.max(1, Math.min(5, prevZoom + delta)));
     };
 
@@ -678,7 +699,8 @@ const WeatherRadarView = ({ navlogData }) => {
           style.innerHTML = `
             .sat-blend { mix-blend-mode: screen; }
             .nav-tooltip { background-color: rgba(15, 23, 42, 0.85) !important; border: 1px solid rgba(56, 189, 248, 0.4) !important; color: #e0f2fe !important; font-size: 10px !important; font-weight: bold !important; padding: 2px 6px !important; border-radius: 4px !important; box-shadow: 0 2px 4px rgba(0,0,0,0.5) !important; }
-            .airspace-tooltip { background-color: rgba(0, 0, 0, 0.7) !important; border: 1px solid #f87171 !important; color: #fecaca !important; font-size: 10px !important; font-weight: bold !important; padding: 2px 6px !important; border-radius: 4px !important; }
+            .airspace-tooltip { background-color: rgba(0, 0, 0, 0.7) !important; border: 1px solid #38bdf8 !important; color: #bae6fd !important; font-size: 10px !important; font-weight: bold !important; padding: 2px 6px !important; border-radius: 4px !important; }
+            .airspace-restricted { background-color: rgba(0, 0, 0, 0.7) !important; border: 1px solid #ef4444 !important; color: #fca5a5 !important; font-size: 10px !important; font-weight: bold !important; padding: 2px 6px !important; border-radius: 4px !important; }
             .fir-tooltip { background-color: rgba(255, 255, 255, 0.8) !important; border: 1px solid #f97316 !important; color: #c2410c !important; font-size: 10px !important; font-weight: bold !important; padding: 2px 6px !important; border-radius: 4px !important; }
           `;
           document.head.appendChild(style);
@@ -843,9 +865,12 @@ const WeatherRadarView = ({ navlogData }) => {
     if (showAirspace) {
         const airspaceGroup = L.layerGroup();
         AIRSPACE_DATA.forEach(airspace => {
-            const color = airspace.type === 'restricted' ? '#eab308' : '#f43f5e';
+            let color = '#38bdf8'; // training (青)
+            if (airspace.type === 'itra') color = '#eab308'; // itra (黄)
+            else if (airspace.type === 'restricted') color = '#ef4444'; // restricted (赤)
+            
             const poly = L.polygon(airspace.coords, { color: color, weight: 2, fillColor: color, fillOpacity: 0.15 });
-            poly.bindTooltip(`<div class="text-center font-bold"><div class="border-b border-slate-600/50 pb-0.5 mb-0.5">${airspace.name}</div><div class="text-[10px] text-red-200">${airspace.alt}</div></div>`, { sticky: true, className: 'airspace-tooltip' });
+            poly.bindTooltip(`<div class="text-center font-bold"><div class="border-b border-slate-600/50 pb-0.5 mb-0.5">${airspace.name}</div><div class="text-[10px] opacity-80">${airspace.alt}</div></div>`, { sticky: true, className: airspace.type === 'restricted' ? 'airspace-restricted' : 'airspace-tooltip' });
             airspaceGroup.addLayer(poly);
         });
         airspaceGroup.addTo(map);
@@ -871,34 +896,82 @@ const WeatherRadarView = ({ navlogData }) => {
     const loadFIRs = async () => {
         try {
             const res = await fetch('https://raw.githubusercontent.com/vatsimnetwork/vatspy-data-project/master/Boundaries.geojson');
-            if (!res.ok) {
-                console.warn(`FIR Fetch Failed: ${res.status}`);
-                return; 
-            }
+            if (!res.ok) { console.warn(`FIR Fetch Failed with status: ${res.status}`); return; }
             
-            const data = await res.json();
-            
-            if (data && data.features) {
-                data.features.forEach(feature => { fixAntiMeridian(feature); });
-            }
+            const rawData = await res.json();
+            const newFeatures = [];
 
-            const firLayer = L.geoJSON(data, {
-                style: function (feature) {
-                    const isOceanic = feature.properties?.name?.toLowerCase().includes('oceanic') || feature.properties?.name?.toLowerCase().includes('pacific');
-                    return { color: '#f97316', weight: isOceanic ? 2.0 : 1.0, dashArray: '', fillOpacity: 0 };
-                },
-                onEachFeature: function (feature, layer) {
-                    if (feature.properties?.name) {
-                        layer.bindTooltip(feature.properties.name, { sticky: true, className: 'fir-tooltip' });
+            rawData.features.forEach(f => {
+                const id = f.properties?.id || '';
+                // 4文字のメインIDのみを許可（日本の詳細セクターなどを排除）
+                if (id.length !== 4) return;
+
+                let multiLines = [];
+                const processRing = (ring) => {
+                    let currentLine = [];
+                    for (let i = 0; i < ring.length - 1; i++) {
+                        const pt = ring[i];
+                        const nextPt = ring[i+1];
+                        currentLine.push([...pt]);
+                        
+                        const isAM = Math.abs(Math.abs(pt[0]) - 180) < 0.01 && Math.abs(Math.abs(nextPt[0]) - 180) < 0.01;
+                        if (isAM) {
+                            if (currentLine.length > 1) multiLines.push(currentLine);
+                            currentLine = [];
+                        }
                     }
-                }
+                    if (currentLine.length > 0) {
+                        currentLine.push([...ring[ring.length - 1]]);
+                        if (currentLine.length > 1) multiLines.push(currentLine);
+                    }
+                };
+
+                if (f.geometry.type === 'Polygon') f.geometry.coordinates.forEach(processRing);
+                else if (f.geometry.type === 'MultiPolygon') f.geometry.coordinates.forEach(poly => poly.forEach(processRing));
+                else if (f.geometry.type === 'LineString') processRing(f.geometry.coordinates);
+                else if (f.geometry.type === 'MultiLineString') f.geometry.coordinates.forEach(processRing);
+
+                multiLines.forEach(line => {
+                    let offset = 0;
+                    for (let i = 1; i < line.length; i++) {
+                        let prevLon = line[i-1][0];
+                        let lon = line[i][0] + offset;
+                        if (lon - prevLon > 180) { offset -= 360; lon -= 360; }
+                        else if (prevLon - lon > 180) { offset += 360; lon += 360; }
+                        line[i][0] = lon;
+                    }
+                });
+
+                newFeatures.push({ ...f, geometry: { type: 'MultiLineString', coordinates: multiLines } });
             });
-            firGroup.addLayer(firLayer);
+
+            const processedData = { ...rawData, features: newFeatures };
+
+            const firStyle = (feature) => {
+                const isOceanic = feature.properties?.name?.toLowerCase().includes('oceanic') || feature.properties?.name?.toLowerCase().includes('pacific');
+                return { color: '#f97316', weight: isOceanic ? 2.0 : 1.0, dashArray: '', fillOpacity: 0 };
+            };
+
+            const createShiftedGeoJSON = (offsetLng) => {
+                return L.geoJSON(processedData, {
+                    coordsToLatLng: (coords) => new L.LatLng(coords[1], coords[0] + offsetLng, coords[2]),
+                    style: firStyle,
+                    onEachFeature: (feature, layer) => {
+                        if (feature.properties?.name) {
+                            layer.bindTooltip(feature.properties.name, { sticky: true, className: 'fir-tooltip' });
+                        }
+                    }
+                });
+            };
+
+            firGroup.addLayer(createShiftedGeoJSON(0));
+            firGroup.addLayer(createShiftedGeoJSON(360));
+            firGroup.addLayer(createShiftedGeoJSON(-360));
+
         } catch (err) { console.error("Failed to load FIR data", err); }
     };
     loadFIRs();
   }, [isMapLoaded, showFIR]);
-
 
   let currentTimeLabel = "LIVE";
   let activeLayerName = "No Layer Selected";
@@ -953,7 +1026,7 @@ const WeatherRadarView = ({ navlogData }) => {
             <label className="flex items-center gap-1 cursor-pointer select-none text-slate-300 hover:text-white border-l border-slate-600 pl-2"><input type="checkbox" checked={showGlobalIr} onChange={(e) => setShowGlobalIr(e.target.checked)} className="accent-sky-500 rounded" /><span>RV-IR</span></label>
             <label className="flex items-center gap-1 cursor-pointer select-none text-slate-300 hover:text-white"><input type="checkbox" checked={showRadar} onChange={(e) => setShowRadar(e.target.checked)} className="accent-sky-500 rounded" /><span>RADAR</span></label>
             <label className="flex items-center gap-1 cursor-pointer select-none text-slate-300 hover:text-white border-l border-slate-600 pl-2"><input type="checkbox" checked={showNavlogRoute} onChange={(e) => setShowNavlogRoute(e.target.checked)} className="accent-sky-500 rounded" /><span className="font-bold text-sky-400">Route</span></label>
-            <label className="flex items-center gap-1 cursor-pointer select-none text-slate-300 hover:text-white border-l border-slate-600 pl-2"><input type="checkbox" checked={showAirspace} onChange={(e) => setShowAirspace(e.target.checked)} className="accent-rose-500 rounded" /><span className="font-bold text-rose-400">空域(R/T)</span></label>
+            <label className="flex items-center gap-1 cursor-pointer select-none text-slate-300 hover:text-white border-l border-slate-600 pl-2"><input type="checkbox" checked={showAirspace} onChange={(e) => setShowAirspace(e.target.checked)} className="accent-rose-500 rounded" /><span className="font-bold text-rose-400">空域(R/T/W)</span></label>
             <label className="flex items-center gap-1 cursor-pointer select-none text-slate-300 hover:text-white border-l border-slate-600 pl-2"><input type="checkbox" checked={showFIR} onChange={(e) => setShowFIR(e.target.checked)} className="accent-orange-500 rounded" /><span className="font-bold text-orange-400">FIR</span></label>
           </div>
         </div>
@@ -979,9 +1052,6 @@ const WeatherRadarView = ({ navlogData }) => {
   );
 };
 
-// =========================================================================
-// メインアプリケーション
-// =========================================================================
 export default function App() {
   const [navlogData, setNavlogData] = useState(null);
   const [routeWps, setRouteWps] = useState([]); 
@@ -1128,8 +1198,8 @@ export default function App() {
       <header className="flex items-center justify-between px-4 py-3 bg-slate-900 border-b border-slate-800 shrink-0 relative z-20">
         <div className="flex items-center gap-3">
           <span className="text-sky-400 bg-sky-900/30 p-1.5 rounded-lg border border-sky-800"><IconPlane /></span>
-          <h1 className="text-white font-black text-lg tracking-wide hidden sm:flex items-end gap-2">GLOBAL WX RADAR <span className="text-[10px] text-sky-400 font-mono font-normal">v1.2.0</span></h1>
-          <h1 className="text-white font-black text-lg tracking-wide sm:hidden flex items-end gap-2">WX RADAR <span className="text-[10px] text-sky-400 font-mono font-normal">v1.2.0</span></h1>
+          <h1 className="text-white font-black text-lg tracking-wide hidden sm:flex items-end gap-2">GLOBAL WX RADAR <span className="text-[10px] text-sky-400 font-mono font-normal">v1.24.0</span></h1>
+          <h1 className="text-white font-black text-lg tracking-wide sm:hidden flex items-end gap-2">WX RADAR <span className="text-[10px] text-sky-400 font-mono font-normal">v1.24.0</span></h1>
         </div>
 
         <div className="flex bg-slate-950 p-1 rounded-lg border border-slate-800 absolute left-1/2 transform -translate-x-1/2">

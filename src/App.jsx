@@ -439,6 +439,10 @@ const CrossSectionView = ({ routeData, weatherData, timeIndex }) => {
     const containerRef = useRef(null);
     const [dimensions, setDimensions] = useState({ width: 800, height: 400 });
     const [zoomLevel, setZoomLevel] = useState(1);
+    
+    const [initialPinchDist, setInitialPinchDist] = useState(null);
+    const [initialPinchZoom, setInitialPinchZoom] = useState(1);
+    const [activeWindId, setActiveWindId] = useState(null);
 
     useEffect(() => {
         if (!containerRef.current) return;
@@ -446,7 +450,20 @@ const CrossSectionView = ({ routeData, weatherData, timeIndex }) => {
             for (let entry of entries) setDimensions({ width: entry.contentRect.width, height: entry.contentRect.height });
         });
         resizeObserver.observe(containerRef.current);
-        return () => resizeObserver.disconnect();
+
+        const container = containerRef.current;
+        const preventNativeZoom = (e) => {
+            if (e.touches.length === 2) {
+                e.preventDefault(); 
+            }
+        };
+        // passive: false にすることで preventDefault を有効化
+        container.addEventListener('touchmove', preventNativeZoom, { passive: false });
+
+        return () => {
+            resizeObserver.disconnect();
+            container.removeEventListener('touchmove', preventNativeZoom);
+        };
     }, []);
 
     if (!routeData || routeData.length === 0) {
@@ -475,8 +492,10 @@ const CrossSectionView = ({ routeData, weatherData, timeIndex }) => {
     const drawWindBarb = (wp, fl, x, y, windData) => {
         if (!windData || windData.ws === undefined) return null;
         const { wd, ws, temp } = windData;
+        const windId = `wind-${wp.name}-${fl}`;
+
         if (ws < 5) return (
-            <g key={`wind-${wp.name}-${fl}`} transform={`translate(${x},${y})`} className="group cursor-crosshair">
+            <g key={windId} transform={`translate(${x},${y})`} className="group cursor-crosshair">
                 <circle r="2" fill="#94a3b8" />
             </g>
         ); 
@@ -505,13 +524,21 @@ const CrossSectionView = ({ routeData, weatherData, timeIndex }) => {
             barbElements.push(<line key={`5`} x1="0" y1={currentY} x2="4" y2={currentY - 1.5} stroke="#e2e8f0" strokeWidth="1.5" />);
         }
 
+        const isActive = activeWindId === windId;
+        const handleWindClick = (e) => {
+            e.stopPropagation(); // 背景のSVGクリックによるクリアを防ぐ
+            setActiveWindId(isActive ? null : windId);
+        };
+
         return (
-            <g key={`wind-${wp.name}-${fl}`} transform={`translate(${x},${y})`} className="group cursor-crosshair">
+            <g key={windId} transform={`translate(${x},${y})`} className="group cursor-pointer" onClick={handleWindClick}>
+                {/* タッチターゲットを広げるための透明な領域（指でタップしやすくするため） */}
+                <circle cx="0" cy={-10} r="15" fill="transparent" />
                 <g transform={`rotate(${wd})`}>
                     <line x1="0" y1="0" x2="0" y2={-length} stroke="#e2e8f0" strokeWidth="1.5" strokeLinecap="round" />
                     {barbElements}
                 </g>
-                <g className="opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50">
+                <g className={`transition-opacity z-50 pointer-events-none ${isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
                     <rect x="10" y="-30" width="80" height="40" fill="#0f172a" stroke="#38bdf8" strokeWidth="1" rx="4" opacity="0.9" />
                     <text x="15" y="-15" fontSize="10" fill="#e0f2fe" fontWeight="bold">FL{String(fl).padStart(3, '0')}</text>
                     <text x="15" y="-3" fontSize="10" fill="#bae6fd">{wd}° / {speed}kt</text>
@@ -613,6 +640,39 @@ const CrossSectionView = ({ routeData, weatherData, timeIndex }) => {
         setZoomLevel(prevZoom => Math.max(1, Math.min(5, prevZoom + delta)));
     };
 
+    const handleTouchStart = (e) => {
+        if (e.touches.length === 2) {
+            const dist = Math.hypot(
+                e.touches[0].clientX - e.touches[1].clientX,
+                e.touches[0].clientY - e.touches[1].clientY
+            );
+            setInitialPinchDist(dist);
+            setInitialPinchZoom(zoomLevel);
+        }
+    };
+
+    const handleTouchMove = (e) => {
+        if (e.touches.length === 2 && initialPinchDist) {
+            const currentDist = Math.hypot(
+                e.touches[0].clientX - e.touches[1].clientX,
+                e.touches[0].clientY - e.touches[1].clientY
+            );
+            const scale = currentDist / initialPinchDist;
+            const dampedScale = 1 + (scale - 1) * 0.8; // ズーム感度の調整（緩衝）
+            setZoomLevel(Math.max(1, Math.min(5, initialPinchZoom * dampedScale)));
+        }
+    };
+
+    const handleTouchEnd = (e) => {
+        if (e.touches.length < 2) {
+            setInitialPinchDist(null);
+        }
+    };
+
+    const handleSvgClick = () => {
+        setActiveWindId(null);
+    };
+
     return (
         <div className="w-full h-full flex flex-col bg-slate-950 relative">
             <div className="absolute top-2 right-4 z-10 flex gap-2">
@@ -631,13 +691,17 @@ const CrossSectionView = ({ routeData, weatherData, timeIndex }) => {
                 <div className="flex items-center gap-2"><span className="w-3 h-3 bg-green-500 opacity-50 inline-block"></span> LIGHT (≥ 2kt/1000ft)</div>
             </div>
 
+            {}
             <div 
                 className="flex-1 overflow-x-auto overflow-y-hidden relative" 
                 ref={containerRef}
                 onWheel={handleWheel}
+                onTouchStart={handleTouchStart}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={handleTouchEnd}
             >
                 <div style={{ width: Math.max(dimensions.width, innerWidth + PADDING_X * 2), height: '100%' }}>
-                    <svg width="100%" height="100%" className="block">
+                    <svg width="100%" height="100%" className="block" onClick={handleSvgClick}>
                         {[0, 100, 200, 300, 400].map(fl => (
                             <g key={`grid-fl-${fl}`}>
                                 <line x1={PADDING_X} y1={getY(fl)} x2={PADDING_X + innerWidth} y2={getY(fl)} stroke="#334155" strokeWidth="1" strokeDasharray="4 4" />
@@ -1227,8 +1291,8 @@ export default function App() {
       <header className="flex items-center justify-between px-4 py-3 bg-slate-900 border-b border-slate-800 shrink-0 relative z-20">
         <div className="flex items-center gap-3">
           <span className="text-sky-400 bg-sky-900/30 p-1.5 rounded-lg border border-sky-800"><IconPlane /></span>
-          <h1 className="text-white font-black text-lg tracking-wide hidden sm:flex items-end gap-2">GLOBAL WX RADAR <span className="text-[10px] text-sky-400 font-mono font-normal">v1.24.0</span></h1>
-          <h1 className="text-white font-black text-lg tracking-wide sm:hidden flex items-end gap-2">WX RADAR <span className="text-[10px] text-sky-400 font-mono font-normal">v1.24.0</span></h1>
+          <h1 className="text-white font-black text-lg tracking-wide hidden sm:flex items-end gap-2">GLOBAL WX RADAR <span className="text-[10px] text-sky-400 font-mono font-normal">v1.3.0</span></h1>
+          <h1 className="text-white font-black text-lg tracking-wide sm:hidden flex items-end gap-2">WX RADAR <span className="text-[10px] text-sky-400 font-mono font-normal">v1.3.0</span></h1>
         </div>
 
         <div className="flex bg-slate-950 p-1 rounded-lg border border-slate-800 absolute left-1/2 transform -translate-x-1/2">

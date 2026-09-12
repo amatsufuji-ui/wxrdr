@@ -1,4 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+
+const APP_VERSION = "v1.25.0";
 
 // =========================================================================
 // アイコンコンポーネント
@@ -8,10 +10,11 @@ const IconFileText = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" he
 const IconClipboard = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg>;
 const IconLoader2 = ({className}) => <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>;
 const IconPlane = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.2-1.1.6L3 8l6 5-3.5 3.5-2.5-.5-1.5 1.5 4 1 1 4 1.5-1.5-.5-2.5 3.5-3.5 5 6l1.2-.7c.4-.2.7-.6.6-1.1z"/></svg>;
-const IconRefreshCw = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>;
+const IconRefresh = () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>;
 
 // =========================================================================
 // 訓練空域・臨時留保空域・制限空域 (AIRSPACE DATA)
+// type: 'itra'(黄色), 'training'(青色), 'restricted'(赤色)
 // =========================================================================
 const AIRSPACE_DATA = [
     // --- 臨時留保空域 (ITRA / 準ずるエリア) ---
@@ -19,23 +22,9 @@ const AIRSPACE_DATA = [
     { name: 'ITRA-N1', type: 'itra', alt: 'FL180', coords: [[35.5706, 132.1753], [35.3500, 132.1353], [35.3269, 132.2653], [35.1164, 130.1892], [35.5525, 130.7639]] },
     { name: 'ITRA-N2', type: 'itra', alt: 'FL800', coords: [[35.3269, 132.2653], [35.3014, 132.3139], [35.2919, 132.3372], [35.0375, 131.9897], [34.7236, 131.3769], [34.6864, 130.8808], [34.7253, 130.8669], [34.8531, 130.5850], [34.7697, 130.5253], [34.9953, 130.0311], [35.1164, 130.1892]] },
     { name: 'ITRA-N3', type: 'itra', alt: 'FL240', coords: [[35.3014, 132.3139], [35.2919, 132.3372], [35.0375, 131.9897], [34.7236, 131.3769], [34.7208, 131.3386], [35.0353, 131.6914], [35.2103, 131.7392], [35.2906, 132.2003]] },
-    
-    // ITRA-S (マクロポイントによる3ブロック分割: 変更なし維持)
-    { name: 'ITRA-S (S11-S16)', type: 'itra', alt: 'S11-16: UNL', 
-      coords: [
-        [30.2008, 131.5011], [30.4875, 131.2867], [30.9519, 131.6467], [31.5119, 132.1558], [32.0036, 132.5808], [32.0536, 132.6308], [32.0822, 132.7872], [32.3019, 133.4381], [32.5667, 133.9397], [32.5897, 133.9867], [32.6200, 134.0475], [32.7803, 134.5333], [32.8981, 135.0139], [32.5911, 135.0139], [32.5536, 135.0139]
-      ] 
-    },
-    { name: 'ITRA-S (S20-S25)', type: 'itra', alt: 'S20-25: FL450', 
-      coords: [
-        [30.2008, 131.5011], [32.5536, 135.0139], [32.1533, 135.0094], [29.9272, 131.7381]
-      ] 
-    },
-    { name: 'ITRA-S (S30-S33)', type: 'itra', alt: 'FL250', 
-      coords: [
-        [29.9272, 131.7381], [32.1533, 135.0094], [31.3019, 135.0000], [29.4689, 132.4039]
-      ] 
-    },
+    { name: 'ITRA-S (S11-S16)', type: 'itra', alt: 'S11-16: UNL', coords: [[30.2008, 131.5011], [30.4875, 131.2867], [30.9519, 131.6467], [31.5119, 132.1558], [32.0036, 132.5808], [32.0536, 132.6308], [32.0822, 132.7872], [32.3019, 133.4381], [32.5667, 133.9397], [32.5897, 133.9867], [32.6200, 134.0475], [32.7803, 134.5333], [32.8981, 135.0139], [32.5911, 135.0139], [32.5536, 135.0139]] },
+    { name: 'ITRA-S (S20-S25)', type: 'itra', alt: 'S20-25: FL450', coords: [[30.2008, 131.5011], [32.5536, 135.0139], [32.1533, 135.0094], [29.9272, 131.7381]] },
+    { name: 'ITRA-S (S30-S33)', type: 'itra', alt: 'FL250', coords: [[29.9272, 131.7381], [32.1533, 135.0094], [31.3019, 135.0000], [29.4689, 132.4039]] },
 
     // --- 訓練空域 (TRAINING - 青色) ---
     { name: 'MOOSE NORTH', type: 'training', alt: 'SFC - UNL', coords: [[26.9758, 124.9558], [28.4786, 127.0542], [27.8033, 127.3211], [27.2986, 127.2208], [27.0842, 126.9942], [26.6953, 125.2111]] },
@@ -47,46 +36,34 @@ const AIRSPACE_DATA = [
     { name: 'LION CENTER', type: 'training', alt: 'SFC - UNL', coords: [[25.5186, 128.1647], [24.3911, 129.4597], [23.7003, 128.9464], [24.3797, 127.3061]] },
     { name: 'EAGLE CENTER', type: 'training', alt: 'SFC - UNL', coords: [[25.8931, 128.5000], [25.8103, 129.0386], [25.7375, 129.4311], [25.7458, 130.4036], [25.7397, 130.5003], [24.6639, 129.6653], [24.3911, 129.4597], [25.5186, 128.1647]] },
     { name: 'EAGLE EAST', type: 'training', alt: 'SFC - UNL', coords: [[25.7397, 130.5003], [25.7108, 130.9244], [25.1539, 130.4914], [24.9411, 130.2981], [24.6639, 129.6653]] },
-    
-    // JDA K AREA
     { name: 'JDA K-1-1', type: 'training', alt: 'SFC - FL240', coords: [[34.3928, 137.4781], [34.3939, 137.6031], [34.2317, 137.9358], [34.0364, 138.0208], [33.9925, 138.0147], [33.9472, 137.7603], [34.0628, 137.6875]] },
     { name: 'JDA K-1-2', type: 'training', alt: 'SFC - FL260', coords: [[34.3900, 137.1739], [34.3928, 137.4781], [34.0628, 137.6875], [34.2153, 137.3739], [34.1922, 137.0861], [34.2000, 136.9956]] },
     { name: 'JDA K-1-3', type: 'training', alt: 'SFC - FL310', coords: [[33.7822, 136.6042], [34.2000, 136.9956], [34.1922, 137.0861], [34.2153, 137.3739], [34.0628, 137.6875], [33.9472, 137.7603], [33.8400, 137.1744], [33.8244, 137.0900]] },
     { name: 'JDA K-2', type: 'training', alt: 'SFC - FL240', coords: [[33.9925, 138.0147], [33.1636, 137.9000], [32.9558, 137.2678], [32.9069, 136.7975], [33.5469, 136.3858], [33.7822, 136.6042], [33.8244, 137.0900], [33.8400, 137.1744], [33.9472, 137.7603]] },
-    
     { name: 'Shizuhama', type: 'training', alt: 'SFC - FL240', coords: [[35.1411, 138.6919], [35.1367, 138.5792], [34.8478, 138.2372], [34.8778, 138.7636], [34.8686, 138.7803]] },
     { name: 'HYAKURI Area 1', type: 'training', alt: 'SFC - 5000', coords: [[36.2517, 142.0592], [36.6786, 142.1753], [37.1564, 142.3581], [37.7733, 142.5850], [38.1697, 142.6883], [38.1697, 142.9908], [37.7794, 142.6861], [37.3200, 142.9908], [36.2500, 142.9908]] },
     { name: 'AREA P-1', type: 'training', alt: 'UNL', coords: [[32.0033, 129.5811], [31.3036, 129.5811], [30.3703, 127.9981], [32.5033, 127.1981], [32.5033, 127.4981], [34.0031, 128.6311], [34.3447, 128.9128], [33.8494, 129.3356], [33.8367, 129.3644], [33.1700, 128.9978], [33.0033, 128.4978], [32.3200, 128.4978]] },
     { name: 'AREA G-1', type: 'training', alt: 'UNL', coords: [[40.0025, 135.9964], [39.8358, 135.9967], [39.0525, 136.9969], [39.0028, 136.9969], [38.9197, 137.1633], [38.6889, 137.4739], [38.1958, 137.9969], [38.0697, 137.9969], [36.3961, 134.4503], [36.4267, 133.8633], [36.8336, 133.0878], [36.9500, 133.0778], [37.8844, 132.9972], [38.0028, 132.9972], [40.0025, 135.3261]] },
+    // 復元された追加空域
+    { name: 'Area A-1', type: 'training', alt: 'FL600/FL240', coords: [[43.5858, 141.4131], [43.5025, 141.9128], [43.3600, 142.0308], [43.7897, 142.2581], [43.8511, 141.4275]] },
+    { name: 'Area A-11', type: 'training', alt: 'FL600/FL240', coords: [[43.3600, 142.0308], [43.2858, 142.0961], [43.0561, 142.2853], [43.2858, 142.6725], [43.4350, 142.9261], [43.7897, 142.2581]] },
+    { name: 'Area A-12', type: 'training', alt: 'FL240/FL200', coords: [[43.3600, 142.0308], [43.2858, 142.0961], [43.2858, 142.6725], [43.4350, 142.9261], [43.7897, 142.2581]] },
+    { name: 'Area A-13', type: 'training', alt: 'FL600/FL240', coords: [[43.0561, 142.2853], [43.0025, 142.3294], [43.0025, 144.0367], [43.2858, 143.9400], [43.4133, 143.8725], [43.3658, 143.7258], [43.7292, 143.4258], [43.4350, 142.9261], [43.2858, 142.6725]] },
 
     // --- 制限・警告空域 (RESTRICTED / WARNING - 赤色) ---
     { name: 'R-144 ENSHUNADA', type: 'restricted', alt: 'SFC - 49213', coords: [[34.2153, 137.3739], [34.0628, 137.6875], [33.9472, 137.7603], [33.8400, 137.1744], [34.1922, 137.0861]] },
     { name: 'R-121 CENTRAL HONSHU', type: 'restricted', alt: 'SFC - 35000', coords: [[36.6697, 141.0800], [36.6697, 141.3467], [36.0033, 141.3467], [36.0033, 141.0800]] },
-    
-    // R-109 Area LIMA 
-    { name: 'R-109 Area LIMA', type: 'restricted', alt: 'SFC - UNL', 
-      coords: [
-        [32.0286, 132.6308], [32.1536, 132.9975], [31.8036, 132.9975], [32.0369, 133.4975], [31.7036, 133.4975], [31.0703, 132.1308], [31.4203, 132.1308], [31.6369, 132.6308]
-      ] 
-    },
+    { name: 'R-109 Area LIMA', type: 'restricted', alt: 'SFC - UNL', coords: [[32.0286, 132.6308], [32.1536, 132.9975], [31.8036, 132.9975], [32.0369, 133.4975], [31.7036, 133.4975], [31.0703, 132.1308], [31.4203, 132.1308], [31.6369, 132.6308]] },
     { name: 'R-533', type: 'restricted', alt: 'SFC - UNL', coords: [[31.4203, 132.1308], [31.5119, 132.1558], [32.0036, 132.5808], [32.0536, 132.6308], [31.6369, 132.6308]] },
     { name: 'R-104 Area Golf', type: 'restricted', alt: 'SFC - 20000', coords: [[33.5867, 128.4144], [33.9367, 128.9311], [33.7033, 129.1644], [33.3533, 128.6478]] },
     { name: 'R-105 Area Foxtrot', type: 'restricted', alt: 'SFC - UNL', coords: [[32.3367, 128.7644], [32.3367, 129.1644], [31.7867, 129.1644], [31.7867, 128.7644]] },
     { name: 'R-134 KYUSHU', type: 'restricted', alt: 'SFC - 35000', coords: [[34.8531, 130.5850], [34.7253, 130.8669], [34.1478, 130.4836], [34.2825, 130.2103]] },
-    
-    // ==========================================
-    // 新規追加: AIP JP-ENR-5.1 より抽出したFL200以上の制限・警告区域 (赤色)
-    // ==========================================
+    // 復元された追加制限空域
     { name: 'YAUSUBETSU', type: 'restricted', alt: 'GND - 36000', coords: [[43.3414, 144.7069], [43.3281, 144.9014], [43.3025, 145.0306], [43.2303, 145.0325], [43.2217, 144.8708], [43.2928, 144.6694]] },
     { name: 'R-127 OJOJI-HARA', type: 'restricted', alt: 'GND - 25000', coords: [[38.5194, 140.6797], [38.5194, 140.8631], [38.4694, 140.8631], [38.4694, 140.6797]] },
     { name: 'R-129 NORTHERN HONSHU', type: 'restricted', alt: 'SFC - 35000', coords: [[40.8361, 142.1797], [40.8361, 142.9961], [40.7361, 142.9961], [40.4028, 142.5464], [40.4028, 142.2297]] },
     { name: 'R-131 HIDAKAOKI', type: 'restricted', alt: 'SFC - UNL', coords: [[42.0692, 142.2794], [41.7358, 142.9628], [41.4528, 142.7128], [41.7608, 142.0881], [41.9858, 142.0631]] },
-    { name: 'R-532', type: 'restricted', alt: 'SFC - 39370', coords: [[38.8531, 142.3631], [38.7364, 142.5297], [38.3531, 142.1631], [38.4697, 141.9964]] },
-
-    // ==========================================
-    // 新規追加: AIP JP-ENR-5.2 より抽出したFL200以上の訓練・試験空域 (青色)
-    // ==========================================
-    { name: 'Area A-1', type: 'training', alt: 'FL240 - FL600', coords: [[43.5858, 141.4131], [43.5025, 141.9128], [43.3600, 142.0308], [43.7897, 142.2581], [43.8511, 141.4275]] }
+    { name: 'R-532', type: 'restricted', alt: 'SFC - 39370', coords: [[38.8531, 142.3631], [38.7364, 142.5297], [38.3531, 142.1631], [38.4697, 141.9964]] }
 ];
 
 // =========================================================================
@@ -145,9 +122,6 @@ const parseWaypointToLatLng = (wpObj) => {
   return null;
 };
 
-// =========================================================================
-// ジオメトリ・時間ヘルパー
-// =========================================================================
 const toRad = deg => deg * Math.PI / 180;
 const toDeg = rad => rad * 180 / Math.PI;
 const getBearing = (lat1, lon1, lat2, lon2) => {
@@ -309,7 +283,6 @@ const parseNavlogText = (text) => {
                     break;
                 }
             }
-            
             currentFl = wpFl; 
 
             pendingLat = null;
@@ -367,23 +340,14 @@ const LoadDataModal = ({ isOpen, onClose, onFileLoad, onTextLoad, isParsing }) =
 };
 
 // =========================================================================
-// CROSS SECTION VIEW (矢羽対応・ステップダウン追従・マウスズーム対応・TOC/TOD補間・等温線トグル)
+// CROSS SECTION VIEW (矢羽対応・ステップダウン追従・マウスズーム・等温線対応)
 // =========================================================================
 const CrossSectionView = ({ routeData, weatherData, timeIndex }) => {
     const containerRef = useRef(null);
     const [dimensions, setDimensions] = useState({ width: 800, height: 400 });
     const [zoomLevel, setZoomLevel] = useState(1);
-    
-    // タッチズーム用State
-    const [initialPinchDist, setInitialPinchDist] = useState(null);
-    const [initialPinchZoom, setInitialPinchZoom] = useState(1);
-    
-    // タッチ時ツールチップ固定用
-    const [activeWindId, setActiveWindId] = useState(null);
-    
-    // トグル表示用State
-    const [showIsotach, setShowIsotach] = useState(true);
-    const [showIsotherm, setShowIsotherm] = useState(false);
+    const [showTemp, setShowTemp] = useState(false);
+    const [showWind, setShowWind] = useState(true);
 
     useEffect(() => {
         if (!containerRef.current) return;
@@ -417,27 +381,21 @@ const CrossSectionView = ({ routeData, weatherData, timeIndex }) => {
 
     const currentWeatherData = weatherData[timeIndex] || {};
 
-    const drawWindBarb = (wp, fl, x, y, windData, wpIdx) => {
+    const drawWindBarb = (wp, fl, x, y, windData) => {
         if (!windData || windData.ws === undefined) return null;
         const { wd, ws, temp } = windData;
-        const windId = `wind-${wp.name}-${fl}-${wpIdx}`;
-        const isActive = activeWindId === windId;
-
-        if (ws < 5) {
-            return (
-                <g key={windId} transform={`translate(${x},${y})`} className="group cursor-pointer" onClick={(e) => { e.stopPropagation(); setActiveWindId(isActive ? null : windId); }}>
-                    {/* 透明なタッチターゲット */}
-                    <circle cx="0" cy="0" r="15" fill="transparent" />
-                    <circle r="2" fill="#94a3b8" />
-                    <g className={`transition-opacity z-50 pointer-events-none ${isActive ? 'opacity-100' : 'opacity-0 lg:group-hover:opacity-100'}`}>
-                        <rect x="10" y="-30" width="80" height="40" fill="#0f172a" stroke="#38bdf8" strokeWidth="1" rx="4" opacity="0.9" />
-                        <text x="15" y="-15" fontSize="10" fill="#e0f2fe" fontWeight="bold">FL{String(fl).padStart(3, '0')}</text>
-                        <text x="15" y="-3" fontSize="10" fill="#bae6fd">CALM</text>
-                        <text x="65" y="-15" fontSize="10" fill="#fca5a5">{temp > 0 ? '+' : ''}{temp}℃</text>
-                    </g>
+        if (ws < 5) return (
+            <g key={`wind-${wp.name}-${fl}`} transform={`translate(${x},${y})`} className="group cursor-crosshair outline-none" tabIndex="0">
+                <circle r="15" fill="transparent" />
+                <circle r="2" fill="#94a3b8" className="pointer-events-none" />
+                <g className="opacity-0 group-hover:opacity-100 group-focus:opacity-100 pointer-events-none transition-opacity z-50">
+                    <rect x="10" y="-30" width="80" height="40" fill="#0f172a" stroke="#38bdf8" strokeWidth="1" rx="4" opacity="0.9" />
+                    <text x="15" y="-15" fontSize="10" fill="#e0f2fe" fontWeight="bold">FL{String(fl).padStart(3, '0')}</text>
+                    <text x="15" y="-3" fontSize="10" fill="#bae6fd">{wd}° / {Math.round(ws)}kt</text>
+                    <text x="65" y="-15" fontSize="10" fill="#fca5a5">{temp > 0 ? '+' : ''}{temp}℃</text>
                 </g>
-            ); 
-        }
+            </g>
+        ); 
 
         const length = 20; 
         const speed = Math.round(ws);
@@ -463,20 +421,14 @@ const CrossSectionView = ({ routeData, weatherData, timeIndex }) => {
             barbElements.push(<line key={`5`} x1="0" y1={currentY} x2="4" y2={currentY - 1.5} stroke="#e2e8f0" strokeWidth="1.5" />);
         }
 
-        const handleWindClick = (e) => {
-            e.stopPropagation(); 
-            setActiveWindId(isActive ? null : windId);
-        };
-
         return (
-            <g key={windId} transform={`translate(${x},${y})`} className="group cursor-pointer" onClick={handleWindClick}>
-                {/* 押しやすくするための透明なターゲット */}
-                <circle cx="0" cy={-10} r="15" fill="transparent" />
-                <g transform={`rotate(${wd})`}>
+            <g key={`wind-${wp.name}-${fl}`} transform={`translate(${x},${y})`} className="group cursor-crosshair outline-none" tabIndex="0">
+                <circle r="15" fill="transparent" />
+                <g transform={`rotate(${wd})`} className="pointer-events-none">
                     <line x1="0" y1="0" x2="0" y2={-length} stroke="#e2e8f0" strokeWidth="1.5" strokeLinecap="round" />
                     {barbElements}
                 </g>
-                <g className={`transition-opacity z-50 pointer-events-none ${isActive ? 'opacity-100' : 'opacity-0 lg:group-hover:opacity-100'}`}>
+                <g className="opacity-0 group-hover:opacity-100 group-focus:opacity-100 pointer-events-none transition-opacity z-50">
                     <rect x="10" y="-30" width="80" height="40" fill="#0f172a" stroke="#38bdf8" strokeWidth="1" rx="4" opacity="0.9" />
                     <text x="15" y="-15" fontSize="10" fill="#e0f2fe" fontWeight="bold">FL{String(fl).padStart(3, '0')}</text>
                     <text x="15" y="-3" fontSize="10" fill="#bae6fd">{wd}° / {speed}kt</text>
@@ -489,14 +441,13 @@ const CrossSectionView = ({ routeData, weatherData, timeIndex }) => {
     const windArrows = []; const shearRects = []; const windSpeedGrid = []; const tempGrid = [];
 
     for (let fl = 0; fl <= MAX_FL; fl += FL_STEP) {
-        const speedRow = [];
-        const tempRow = [];
+        const windRow = []; const tempRow = [];
         pointsWithDist.forEach(wp => {
-            const wind = (currentWeatherData[wp.name] || {})[fl];
-            speedRow.push(wind ? wind.ws : 0);
-            tempRow.push(wind && wind.temp !== undefined ? wind.temp : 0);
+            const wx = currentWeatherData[wp.name];
+            windRow.push(wx ? wx.ws : 0);
+            tempRow.push(wx ? wx.temp : 0);
         });
-        windSpeedGrid.push(speedRow);
+        windSpeedGrid.push(windRow);
         tempGrid.push(tempRow);
     }
 
@@ -515,8 +466,7 @@ const CrossSectionView = ({ routeData, weatherData, timeIndex }) => {
             const cellHeight = Math.abs(yUpper - y);
 
             if (wind) {
-                const barb = drawWindBarb(wp, fl, x1, y, wind, i);
-                if (barb) windArrows.push(barb);
+                windArrows.push(drawWindBarb(wp, fl, x1, y, wind));
                 if (windUpper) {
                     const u1 = -wind.ws * Math.sin(toRad(wind.wd)); const v1 = -wind.ws * Math.cos(toRad(wind.wd));
                     const u2 = -windUpper.ws * Math.sin(toRad(windUpper.wd)); const v2 = -windUpper.ws * Math.cos(toRad(windUpper.wd));
@@ -527,7 +477,7 @@ const CrossSectionView = ({ routeData, weatherData, timeIndex }) => {
                     else if (shearPer1000ft >= 4) { shearColor = '#eab308'; opacity = 0.3; }
                     else if (shearPer1000ft >= 2) { shearColor = '#22c55e'; opacity = 0.15; }
 
-                    if (shearColor) shearRects.push(<rect key={`shear-${wp.name}-${fl}-${i}`} x={x1} y={yUpper} width={cellWidth} height={cellHeight} fill={shearColor} opacity={opacity} />);
+                    if (shearColor) shearRects.push(<rect key={`shear-${wp.name}-${fl}`} x={x1} y={yUpper} width={cellWidth} height={cellHeight} fill={shearColor} opacity={opacity} />);
                 }
             }
         }
@@ -541,9 +491,8 @@ const CrossSectionView = ({ routeData, weatherData, timeIndex }) => {
                 const y1 = getY(r * FL_STEP), y2 = getY((r + 1) * FL_STEP);
                 const v0 = grid[r][c], v1 = grid[r][c+1], v2 = grid[r+1][c+1], v3 = grid[r+1][c];
                 
-                let cellType;
+                let cellType = 0;
                 if (isTemp) {
-                    // 温度は閾値以下を下として等値線を引く
                     cellType = (v0 <= threshold ? 1 : 0) | (v1 <= threshold ? 2 : 0) | (v2 <= threshold ? 4 : 0) | (v3 <= threshold ? 8 : 0);
                 } else {
                     cellType = (v0 >= threshold ? 1 : 0) | (v1 >= threshold ? 2 : 0) | (v2 >= threshold ? 4 : 0) | (v3 >= threshold ? 8 : 0);
@@ -569,35 +518,47 @@ const CrossSectionView = ({ routeData, weatherData, timeIndex }) => {
     };
 
     const isotachLines = [];
-    if (showIsotach) {
+    if (showWind) {
         [40, 60, 80, 100, 120, 140, 160, 180, 200].forEach(speed => {
-            const { path, labelPts } = drawIsoline(windSpeedGrid, speed, false);
+            const { path, labelPts } = drawIsoline(windSpeedGrid, speed);
             if (path) {
                 isotachLines.push(<path key={`iso-${speed}`} d={path} fill="none" stroke="#0ea5e9" strokeWidth="1.5" strokeDasharray="4 4" opacity="0.8" />);
                 labelPts.filter((_, idx) => idx % 10 === 0).forEach((pt, idx) => {
-                     isotachLines.push(<text key={`iso-lbl-${speed}-${idx}`} x={pt.x} y={pt.y} fill="#0ea5e9" fontSize="9" fontWeight="bold" textAnchor="middle" dominantBaseline="middle" className="bg-slate-900">{speed}</text>);
+                    isotachLines.push(<text key={`iso-lbl-${speed}-${idx}`} x={pt.x} y={pt.y} fill="#0ea5e9" fontSize="9" fontWeight="bold" textAnchor="middle" dominantBaseline="middle" className="bg-slate-900">{speed}</text>);
                 });
             }
         });
     }
 
     const isothermLines = [];
-    if (showIsotherm) {
-        [-70, -60, -50, -40, -30, -20, -10, 0, 10, 20, 30].forEach(temp => {
+    if (showTemp) {
+        [10, 0, -10, -20, -30, -40, -50, -60].forEach(temp => {
             const { path, labelPts } = drawIsoline(tempGrid, temp, true);
             if (path) {
-                const color = temp === 0 ? '#f43f5e' : (temp > 0 ? '#fb923c' : '#818cf8'); 
-                const width = temp === 0 ? "2.5" : "1.5";
-                const dash = temp === 0 ? "" : "5 5";
-                isothermLines.push(<path key={`isoT-${temp}`} d={path} fill="none" stroke={color} strokeWidth={width} strokeDasharray={dash} opacity="0.6" />);
-                labelPts.filter((_, idx) => idx % 15 === 0).forEach((pt, idx) => {
-                     isothermLines.push(<text key={`isoT-lbl-${temp}-${idx}`} x={pt.x} y={pt.y} fill={color} fontSize="9" fontWeight="bold" textAnchor="middle" dominantBaseline="middle" className="bg-slate-900 drop-shadow-md">{temp}℃</text>);
+                const isZero = temp === 0;
+                isothermLines.push(<path key={`temp-${temp}`} d={path} fill="none" stroke={isZero ? "#ef4444" : "#3b82f6"} strokeWidth={isZero ? "2" : "1"} strokeDasharray={isZero ? "" : "3 3"} opacity={isZero ? "1" : "0.6"} />);
+                labelPts.filter((_, idx) => idx % 12 === 0).forEach((pt, idx) => {
+                    isothermLines.push(<text key={`temp-lbl-${temp}-${idx}`} x={pt.x} y={pt.y} fill={isZero ? "#fca5a5" : "#93c5fd"} fontSize="9" fontWeight="bold" textAnchor="middle" dominantBaseline="middle" opacity="0.8">{temp}℃</text>);
                 });
             }
         });
     }
 
-    const profilePath = pointsWithDist.map(wp => `${getX(wp.accDist)},${getY(wp.fl || 0)}`).join(' L ');
+    const displayPoints = pointsWithDist.map((wp, idx, arr) => {
+        let fl = wp.fl || 0;
+        if (idx === 0) fl = 0; 
+        if (idx === arr.length - 1) fl = 0; 
+
+        if (wp.name === 'TOC' || wp.name === 'TOD') {
+             let cruiseFl = 350;
+             if (wp.name === 'TOC' && arr[idx+1]) cruiseFl = arr[idx+1].fl || 350;
+             if (wp.name === 'TOD' && arr[idx-1]) cruiseFl = arr[idx-1].fl || 350;
+             fl = cruiseFl;
+        }
+        return { ...wp, displayFl: fl };
+    });
+
+    const profilePath = displayPoints.map(wp => `${getX(wp.accDist)},${getY(wp.displayFl)}`).join(' L ');
 
     const handleWheel = (e) => {
         if (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return; 
@@ -607,75 +568,60 @@ const CrossSectionView = ({ routeData, weatherData, timeIndex }) => {
         setZoomLevel(prevZoom => Math.max(1, Math.min(5, prevZoom + delta)));
     };
 
+    let pinchStartDist = 0;
     const handleTouchStart = (e) => {
         if (e.touches.length === 2) {
-            e.preventDefault();
-            const touch1 = e.touches[0];
-            const touch2 = e.touches[1];
-            const dist = Math.hypot(touch1.clientX - touch2.clientX, touch1.clientY - touch2.clientY);
-            setInitialPinchDist(dist);
-            setInitialPinchZoom(zoomLevel);
+            pinchStartDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
         }
     };
-
     const handleTouchMove = (e) => {
-        if (e.touches.length === 2 && initialPinchDist !== null) {
+        if (e.touches.length === 2 && pinchStartDist > 0) {
             e.preventDefault();
-            const touch1 = e.touches[0];
-            const touch2 = e.touches[1];
-            const currentDist = Math.hypot(touch1.clientX - touch2.clientX, touch1.clientY - touch2.clientY);
-            const scale = currentDist / initialPinchDist;
-            setZoomLevel(Math.max(1, Math.min(5, initialPinchZoom * scale)));
+            const currentDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+            const delta = (currentDist - pinchStartDist) * 0.01;
+            setZoomLevel(prevZoom => Math.max(1, Math.min(5, prevZoom + delta)));
+            pinchStartDist = currentDist;
         }
-    };
-
-    const handleTouchEnd = (e) => {
-        if (e.touches.length < 2) {
-            setInitialPinchDist(null);
-        }
-    };
-
-    const handleSvgClick = () => {
-        setActiveWindId(null);
     };
 
     return (
         <div className="w-full h-full flex flex-col bg-slate-950 relative">
-            <div className="absolute top-2 right-4 z-10 flex gap-2 flex-wrap justify-end max-w-full pl-4">
-                <div className="bg-slate-900/80 border border-slate-700 rounded px-2 py-1 flex items-center gap-3 backdrop-blur text-xs shrink-0">
-                    <label className="flex items-center gap-1 cursor-pointer text-sky-300 hover:text-white font-bold">
-                        <input type="checkbox" checked={showIsotach} onChange={e => setShowIsotach(e.target.checked)} className="accent-sky-500 rounded w-3 h-3" />
-                        <span>WIND</span>
+            <div className="absolute top-2 right-4 z-10 flex gap-2 flex-wrap justify-end">
+                <div className="bg-slate-900/80 border border-slate-700 rounded px-2 py-1 flex items-center gap-3 backdrop-blur shadow-md">
+                    <label className="flex items-center gap-1 cursor-pointer select-none text-slate-300 hover:text-white text-xs">
+                        <input type="checkbox" checked={showWind} onChange={(e) => setShowWind(e.target.checked)} className="accent-sky-500 rounded" />
+                        <span className="font-bold text-sky-400">WIND</span>
                     </label>
-                    <label className="flex items-center gap-1 cursor-pointer text-rose-300 hover:text-white font-bold">
-                        <input type="checkbox" checked={showIsotherm} onChange={e => setShowIsotherm(e.target.checked)} className="accent-rose-500 rounded w-3 h-3" />
-                        <span>TEMP</span>
+                    <div className="w-px h-3 bg-slate-700"></div>
+                    <label className="flex items-center gap-1 cursor-pointer select-none text-slate-300 hover:text-white text-xs">
+                        <input type="checkbox" checked={showTemp} onChange={(e) => setShowTemp(e.target.checked)} className="accent-rose-500 rounded" />
+                        <span className="font-bold text-rose-400">TEMP</span>
                     </label>
-                    <div className="w-px h-4 bg-slate-600"></div>
-                    <span className="font-bold text-slate-400">ZOOM:</span>
-                    <button onClick={() => setZoomLevel(Math.max(1, zoomLevel - 0.5))} className="text-sky-400 hover:text-white px-1.5 bg-slate-800 rounded">-</button>
+                </div>
+                <div className="bg-slate-900/80 border border-slate-700 rounded px-2 py-1 flex items-center gap-2 backdrop-blur shadow-md">
+                    <span className="text-xs font-bold text-slate-400">ZOOM:</span>
+                    <button onClick={() => setZoomLevel(Math.max(1, zoomLevel - 0.5))} className="text-sky-400 hover:text-white px-2 bg-slate-800 rounded active:bg-slate-700">-</button>
                     <span className="text-xs text-white w-10 text-center">{Math.round(zoomLevel * 100)}%</span>
-                    <button onClick={() => setZoomLevel(Math.min(5, zoomLevel + 0.5))} className="text-sky-400 hover:text-white px-1.5 bg-slate-800 rounded">+</button>
+                    <button onClick={() => setZoomLevel(Math.min(5, zoomLevel + 0.5))} className="text-sky-400 hover:text-white px-2 bg-slate-800 rounded active:bg-slate-700">+</button>
                 </div>
             </div>
 
-            <div className="absolute top-2 left-4 z-10 bg-slate-900/80 border border-slate-700 rounded p-2 backdrop-blur text-[10px] text-slate-300 pointer-events-none">
+            <div className="absolute top-2 left-4 z-10 bg-slate-900/80 border border-slate-700 rounded p-2 backdrop-blur text-[10px] text-slate-300 pointer-events-none shadow-md hidden sm:block">
                 <div className="font-bold text-sky-400 border-b border-slate-700 mb-1 pb-1">Turbulence (Vertical Shear)</div>
-                <div className="flex items-center gap-2"><span className="w-3 h-3 bg-red-500 opacity-50 inline-block"></span> SEVERE (≥ 6kt/1000ft)</div>
-                <div className="flex items-center gap-2"><span className="w-3 h-3 bg-yellow-500 opacity-50 inline-block"></span> MODERATE (≥ 4kt/1000ft)</div>
-                <div className="flex items-center gap-2"><span className="w-3 h-3 bg-green-500 opacity-50 inline-block"></span> LIGHT (≥ 2kt/1000ft)</div>
+                <div className="flex items-center gap-2"><span className="w-3 h-3 bg-red-500 opacity-50 inline-block rounded-sm"></span> SEVERE (≥ 6kt/1000ft)</div>
+                <div className="flex items-center gap-2"><span className="w-3 h-3 bg-yellow-500 opacity-50 inline-block rounded-sm"></span> MODERATE (≥ 4kt/1000ft)</div>
+                <div className="flex items-center gap-2"><span className="w-3 h-3 bg-green-500 opacity-50 inline-block rounded-sm"></span> LIGHT (≥ 2kt/1000ft)</div>
             </div>
 
             <div 
-                className="flex-1 overflow-x-auto overflow-y-hidden relative" 
+                className="flex-1 overflow-x-auto overflow-y-hidden relative touch-pan-x" 
                 ref={containerRef}
                 onWheel={handleWheel}
                 onTouchStart={handleTouchStart}
                 onTouchMove={handleTouchMove}
-                onTouchEnd={handleTouchEnd}
             >
                 <div style={{ width: Math.max(dimensions.width, innerWidth + PADDING_X * 2), height: '100%' }}>
-                    <svg width="100%" height="100%" className="block" onClick={handleSvgClick}>
+                    <svg width="100%" height="100%" className="block select-none">
                         {[0, 100, 200, 300, 400].map(fl => (
                             <g key={`grid-fl-${fl}`}>
                                 <line x1={PADDING_X} y1={getY(fl)} x2={PADDING_X + innerWidth} y2={getY(fl)} stroke="#334155" strokeWidth="1" strokeDasharray="4 4" />
@@ -683,17 +629,17 @@ const CrossSectionView = ({ routeData, weatherData, timeIndex }) => {
                             </g>
                         ))}
                         <g style={{ filter: 'blur(8px)' }}>{shearRects}</g>
-                        <g>{isotachLines}</g>
                         <g>{isothermLines}</g>
+                        <g>{isotachLines}</g>
                         <g>{windArrows}</g>
                         
                         <path d={`M ${profilePath}`} fill="none" stroke="#d946ef" strokeWidth="2.5" />
                         
-                        {pointsWithDist.map((wp, idx) => (
+                        {displayPoints.map((wp, idx) => (
                             <g key={`wp-${idx}`} transform={`translate(${getX(wp.accDist)}, ${innerHeight + PADDING_Y_TOP})`}>
                                 <line x1="0" y1="0" x2="0" y2="5" stroke="#94a3b8" strokeWidth="1" />
                                 <text x="0" y="20" fill="#e2e8f0" fontSize="10" textAnchor="middle" transform="rotate(45, 0, 20)">{wp.name}</text>
-                                <circle cx="0" cy={-(innerHeight * ((wp.fl || 0) / MAX_FL))} r="3.5" fill="#fdf4ff" stroke="#d946ef" strokeWidth="2" />
+                                <circle cx="0" cy={-(innerHeight * (wp.displayFl / MAX_FL))} r="3.5" fill="#fdf4ff" stroke="#d946ef" strokeWidth="2" />
                             </g>
                         ))}
                     </svg>
@@ -706,7 +652,7 @@ const CrossSectionView = ({ routeData, weatherData, timeIndex }) => {
 // =========================================================================
 // メインマップコンポーネント
 // =========================================================================
-const WeatherRadarView = ({ navlogData, forceRefreshToken }) => {
+const WeatherRadarView = ({ navlogData, forceRefreshCounter }) => {
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const layersRef = useRef({});
@@ -730,6 +676,7 @@ const WeatherRadarView = ({ navlogData, forceRefreshToken }) => {
   const [jmaFrames, setJmaFrames] = useState([]);
   const [frameIndex, setFrameIndex] = useState(0); 
   const [isPlaying, setIsPlaying] = useState(false);
+  const [lastFetchTime, setLastFetchTime] = useState(Date.now());
 
   const himawariLayerRef = useRef(null);
   const goesLayerRef = useRef(null); 
@@ -737,6 +684,15 @@ const WeatherRadarView = ({ navlogData, forceRefreshToken }) => {
   const arcticLayerRef = useRef(null);
   const globalIrLayerRef = useRef(null);
   const radarLayerRef = useRef(null);
+
+  useEffect(() => {
+    const interval = setInterval(() => setLastFetchTime(Date.now()), 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+      setLastFetchTime(Date.now());
+  }, [forceRefreshCounter]);
 
   useEffect(() => {
     let isMounted = true;
@@ -748,12 +704,7 @@ const WeatherRadarView = ({ navlogData, forceRefreshToken }) => {
           await new Promise((resolve, reject) => { script.onload = resolve; script.onerror = reject; document.head.appendChild(script); });
         }
 
-        if (isMounted && mapContainerRef.current) {
-          if (mapInstanceRef.current) {
-              mapInstanceRef.current.remove();
-              mapInstanceRef.current = null;
-          }
-
+        if (isMounted && mapContainerRef.current && !mapInstanceRef.current) {
           const L = window.L;
           const map = L.map(mapContainerRef.current, { center: [35.0, 135.0], zoom: 3, zoomControl: false, attributionControl: false, worldCopyJump: true });
           L.control.zoom({ position: 'bottomright' }).addTo(map);
@@ -772,7 +723,7 @@ const WeatherRadarView = ({ navlogData, forceRefreshToken }) => {
           `;
           document.head.appendChild(style);
 
-          meteosatLayerRef.current = L.tileLayer.wms('https://view.eumetsat.int/geoserver/ows', { layers: 'msg_fes:ir108,msg_iodc:ir108', format: 'image/png', transparent: true, version: '1.5.0', opacity: opacity, zIndex: 2, className: 'sat-blend' }).addTo(map);
+          meteosatLayerRef.current = L.tileLayer.wms('https://view.eumetsat.int/geoserver/ows', { layers: 'msg_fes:ir108,msg_iodc:ir108', format: 'image/png', transparent: true, version: '1.3.0', opacity: opacity, zIndex: 2, className: 'sat-blend' }).addTo(map);
           arcticLayerRef.current = L.tileLayer.wms('https://realearth.ssec.wisc.edu/wms/', { layers: 'globalir', format: 'image/png', transparent: true, opacity: opacity, zIndex: 1, className: 'sat-blend' }).addTo(map);
 
           const errImg = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
@@ -786,24 +737,24 @@ const WeatherRadarView = ({ navlogData, forceRefreshToken }) => {
       } catch (err) { console.error("Map initialization failed", err); }
     };
     loadLeaflet();
-    return () => { isMounted = false; if (mapInstanceRef.current) { mapInstanceRef.current.remove(); mapInstanceRef.current = null; setIsMapLoaded(false); } };
+    return () => { isMounted = false; if (mapInstanceRef.current) { mapInstanceRef.current.remove(); mapInstanceRef.current = null; } };
   }, []);
 
   useEffect(() => {
-      const timestamp = new Date().getTime();
-      fetch(`https://api.rainviewer.com/public/weather-maps.json?t=${timestamp}`)
+      const ts = `?t=${Date.now()}`;
+      fetch(`https://api.rainviewer.com/public/weather-maps.json${ts}`)
         .then(res => res.json())
         .then(data => {
           const host = data.host || 'https://tilecache.rainviewer.com';
           if (data.radar?.past) setRvRadarFrames(data.radar.past.map(f => ({ ...f, host })));
           if (data.satellite?.infrared) setRvSatFrames(data.satellite.infrared.map(f => ({ ...f, host })));
-        }).catch(err => console.error("RainViewer Fetch Error:", err));
+        }).catch(err => console.error(err));
 
-      fetch(`https://www.jma.go.jp/bosai/himawari/data/satimg/targetTimes_fd.json?t=${timestamp}`)
+      fetch(`https://www.jma.go.jp/bosai/himawari/data/satimg/targetTimes_fd.json${ts}`)
         .then(res => res.json())
         .then(data => { if (Array.isArray(data) && data.length > 0) setJmaFrames(data.slice(-24)); })
-        .catch(err => console.error("JMA Fetch Error:", err));
-  }, [forceRefreshToken]);
+        .catch(err => console.error(err));
+  }, [lastFetchTime]);
 
   useEffect(() => {
       setIsPlaying(false);
@@ -933,9 +884,9 @@ const WeatherRadarView = ({ navlogData, forceRefreshToken }) => {
     if (showAirspace) {
         const airspaceGroup = L.layerGroup();
         AIRSPACE_DATA.forEach(airspace => {
-            let color = '#38bdf8'; // training (青)
-            if (airspace.type === 'itra') color = '#eab308'; // itra (黄)
-            else if (airspace.type === 'restricted') color = '#ef4444'; // restricted (赤)
+            let color = '#38bdf8'; 
+            if (airspace.type === 'itra') color = '#eab308'; 
+            else if (airspace.type === 'restricted') color = '#ef4444'; 
             
             const poly = L.polygon(airspace.coords, { color: color, weight: 2, fillColor: color, fillOpacity: 0.15 });
             poly.bindTooltip(`<div class="text-center font-bold"><div class="border-b border-slate-600/50 pb-0.5 mb-0.5">${airspace.name}</div><div class="text-[10px] opacity-80">${airspace.alt}</div></div>`, { sticky: true, className: airspace.type === 'restricted' ? 'airspace-restricted' : 'airspace-tooltip' });
@@ -963,167 +914,116 @@ const WeatherRadarView = ({ navlogData, forceRefreshToken }) => {
 
     const loadFIRs = async () => {
         try {
-            // Turf.js のロード確認 (ロードされていなければ動的に追加)
-            if (!window.turf) {
-                const script = document.createElement('script');
-                script.src = 'https://unpkg.com/@turf/turf@6/turf.min.js';
-                await new Promise((resolve, reject) => {
-                    script.onload = resolve;
-                    script.onerror = reject;
-                    document.head.appendChild(script);
-                });
-            }
-
-            const timestamp = new Date().getTime();
-            const res = await fetch(`https://cdn.jsdelivr.net/gh/vatsimnetwork/vatspy-data-project@master/Boundaries.geojson?t=${timestamp}`);
-            if (!res.ok) { console.warn(`FIR Fetch Failed with status: ${res.status}`); return; }
+            const res = await fetch('https://cdn.jsdelivr.net/gh/vatsimnetwork/vatspy-data-project@master/Boundaries.geojson');
+            if (!res.ok) throw new Error("FIR Fetch Failed");
             
             const rawData = await res.json();
-            
-            // 国を判別するヘルパー関数
-            const getCountryGroup = (id, name) => {
-                if (!id || id.length !== 4) return null;
-                // Ocean等の洋上空域は結合しない (単独で描画)
-                if (name && (name.toLowerCase().includes('oceanic') || name.toLowerCase().includes('pacific'))) return null;
-                
-                const prefix1 = id.substring(0, 1);
-                const prefix2 = id.substring(0, 2);
-                
-                if (prefix1 === 'K') return 'USA';
-                if (prefix1 === 'C') return 'Canada';
-                if (prefix1 === 'Y') return 'Australia';
-                if (prefix1 === 'Z') return 'China';
-                // ロシアのICAOプレフィックス (U始まりの多く)
-                if (['UE', 'UH', 'UI', 'UL', 'UM', 'UN', 'UR', 'US', 'UU', 'UW'].includes(prefix2)) return 'Russia';
-                
-                return null; // その他の国は結合しない
-            };
+            const newFeatures = [];
+            const countryGroups = {};
 
-            const countryFeatures = {
-                USA: [], Canada: [], Australia: [], China: [], Russia: []
-            };
-            const otherFeatures = [];
-
-            // 1. 特殊なセクターを除外し、対象国ごとに分類
             rawData.features.forEach(f => {
                 const id = f.properties?.id || '';
-                const name = f.properties?.name || '';
-                
-                // 4文字以外のサブセクターは除外
-                if (id.length !== 4) return;
-                
-                // ポリゴンデータのみを対象とする
-                if (f.geometry.type !== 'Polygon' && f.geometry.type !== 'MultiPolygon') {
-                    otherFeatures.push(f);
-                    return;
-                }
+                if (id.length !== 4) return; 
 
-                const group = getCountryGroup(id, name);
-                if (group && window.turf) {
-                    // Turf.js がロードされていればグループに追加
-                    // 結合処理の前に、180度線をまたぐポリゴンの正規化(仮)を行っておく
-                    const clonedFeature = JSON.parse(JSON.stringify(f));
-                    countryFeatures[group].push(clonedFeature);
-                } else {
-                    otherFeatures.push(f);
-                }
+                let country = id;
+                if (/^K...$|^PA..$|^PH..$|^TJ..$|^PG..$/.test(id)) country = 'USA';
+                else if (/^Z...$/.test(id) && !/^ZK..$/.test(id)) country = 'China';
+                else if (/^Y...$/.test(id)) country = 'Australia';
+                else if (/^U...$/.test(id)) country = 'Russia';
+                else if (/^C...$/.test(id)) country = 'Canada';
+                else if (/^RJ..$|^RO..$/.test(id)) country = 'Japan';
+                else if (/^SB..$/.test(id)) country = 'Brazil';
+                else if (/^V[AEIO]..$/.test(id)) country = 'India';
+
+                if (!countryGroups[country]) countryGroups[country] = { name: f.properties?.name || country, features: [] };
+                countryGroups[country].features.push(f);
             });
 
-            const processedFeatures = [...otherFeatures];
+            Object.keys(countryGroups).forEach(country => {
+                const group = countryGroups[country];
+                const edges = new Map();
 
-            // 2. 国ごとに Turf.js でポリゴンを結合 (Union)
-            if (window.turf) {
-                Object.keys(countryFeatures).forEach(country => {
-                    const features = countryFeatures[country];
-                    if (features.length === 0) return;
+                group.features.forEach(f => {
+                    const processRingForEdges = (ring) => {
+                        let unrolledRing = [];
+                        let offset = 0;
+                        for(let i = 0; i < ring.length; i++) {
+                            let lon = ring[i][0] + offset;
+                            if (i > 0) {
+                                let prevLon = unrolledRing[i-1][0];
+                                if (lon - prevLon > 180) { offset -= 360; lon -= 360; }
+                                else if (prevLon - lon > 180) { offset += 360; lon += 360; }
+                            }
+                            unrolledRing.push([lon, ring[i][1]]);
+                        }
+
+                        for (let i = 0; i < unrolledRing.length - 1; i++) {
+                            const p1 = unrolledRing[i];
+                            const p2 = unrolledRing[i+1];
+                            const rP1 = [Math.round(p1[0]*1000)/1000, Math.round(p1[1]*1000)/1000];
+                            const rP2 = [Math.round(p2[0]*1000)/1000, Math.round(p2[1]*1000)/1000];
+                            
+                            if (rP1[0] === rP2[0] && rP1[1] === rP2[1]) continue;
+
+                            const hash1 = `${rP1[0]},${rP1[1]}`;
+                            const hash2 = `${rP2[0]},${rP2[1]}`;
+                            const edgeHash = hash1 < hash2 ? `${hash1}|${hash2}` : `${hash2}|${hash1}`;
+
+                            if (edges.has(edgeHash)) {
+                                edges.get(edgeHash).count++;
+                            } else {
+                                edges.set(edgeHash, { count: 1, p1, p2 });
+                            }
+                        }
+                    };
                     
-                    if (features.length === 1) {
-                        processedFeatures.push(features[0]);
-                        return;
-                    }
-
-                    try {
-                        let unioned = features[0];
-                        for (let i = 1; i < features.length; i++) {
-                             // Turf.union を使用して結合
-                             // エラーが発生した場合はそのパーツの結合をスキップ
-                             try {
-                                 const temp = window.turf.union(unioned, features[i]);
-                                 if (temp) unioned = temp;
-                             } catch (e) {
-                                 console.warn(`Failed to union polygon in ${country}`, e);
-                             }
-                        }
-                        
-                        // プロパティを再設定
-                        unioned.properties = {
-                            id: country,
-                            name: `${country} FIR`
-                        };
-                        processedFeatures.push(unioned);
-                    } catch (err) {
-                        console.error(`Failed to union country: ${country}`, err);
-                        // 失敗した場合は元の細かいFIRを追加
-                        features.forEach(f => processedFeatures.push(f));
-                    }
+                    if (f.geometry.type === 'Polygon') f.geometry.coordinates.forEach(processRingForEdges);
+                    else if (f.geometry.type === 'MultiPolygon') f.geometry.coordinates.forEach(poly => poly.forEach(processRingForEdges));
+                    else if (f.geometry.type === 'LineString') processRingForEdges(f.geometry.coordinates);
+                    else if (f.geometry.type === 'MultiLineString') f.geometry.coordinates.forEach(processRingForEdges);
                 });
-            }
 
-            // 3. 描画用のデータ構造に再構築し、180度線のまたぎを修正
-            const finalFeatures = [];
-            
-            processedFeatures.forEach(f => {
-                let multiLines = [];
-                const processRing = (ring) => {
-                    let currentLine = [];
-                    for (let i = 0; i < ring.length - 1; i++) {
-                        const pt = ring[i];
-                        const nextPt = ring[i+1];
-                        currentLine.push([...pt]);
-                        
-                        const isAM = Math.abs(Math.abs(pt[0]) - 180) < 0.01 && Math.abs(Math.abs(nextPt[0]) - 180) < 0.01;
-                        if (isAM) {
-                            if (currentLine.length > 1) multiLines.push(currentLine);
-                            currentLine = [];
+                const outerLines = [];
+                edges.forEach((edge) => {
+                    if (edge.count === 1) {
+                        const normLon1 = (edge.p1[0] % 360 + 360) % 360;
+                        const normLon2 = (edge.p2[0] % 360 + 360) % 360;
+                        const isAM = Math.abs(normLon1 - 180) < 0.1 && Math.abs(normLon2 - 180) < 0.1;
+                        if (!isAM) {
+                            outerLines.push([edge.p1, edge.p2]);
                         }
-                    }
-                    if (currentLine.length > 0) {
-                        currentLine.push([...ring[ring.length - 1]]);
-                        if (currentLine.length > 1) multiLines.push(currentLine);
-                    }
-                };
-
-                if (f.geometry.type === 'Polygon') f.geometry.coordinates.forEach(processRing);
-                else if (f.geometry.type === 'MultiPolygon') f.geometry.coordinates.forEach(poly => poly.forEach(processRing));
-                else if (f.geometry.type === 'LineString') processRing(f.geometry.coordinates);
-                else if (f.geometry.type === 'MultiLineString') f.geometry.coordinates.forEach(processRing);
-
-                multiLines.forEach(line => {
-                    let offset = 0;
-                    for (let i = 1; i < line.length; i++) {
-                        let prevLon = line[i-1][0];
-                        let lon = line[i][0] + offset;
-                        if (lon - prevLon > 180) { offset -= 360; lon -= 360; }
-                        else if (prevLon - lon > 180) { offset += 360; lon += 360; }
-                        line[i][0] = lon;
                     }
                 });
 
-                finalFeatures.push({ ...f, geometry: { type: 'MultiLineString', coordinates: multiLines } });
+                if (outerLines.length > 0) {
+                    let displayName = group.name;
+                    if (country === 'USA') displayName = 'United States FIR';
+                    else if (country === 'China') displayName = 'China FIR';
+                    else if (country === 'Australia') displayName = 'Australia FIR';
+                    else if (country === 'Russia') displayName = 'Russia FIR';
+                    else if (country === 'Canada') displayName = 'Canada FIR';
+                    else if (country === 'Japan') displayName = 'Japan FIR';
+                    else if (country === 'Brazil') displayName = 'Brazil FIR';
+                    else if (country === 'India') displayName = 'India FIR';
+
+                    newFeatures.push({
+                        type: 'Feature',
+                        properties: { name: displayName, id: country },
+                        geometry: { type: 'MultiLineString', coordinates: outerLines }
+                    });
+                }
             });
 
-
-            const finalData = { type: 'FeatureCollection', features: finalFeatures };
+            const processedData = { ...rawData, features: newFeatures };
 
             const firStyle = (feature) => {
-                const isOceanic = feature.properties?.name?.toLowerCase().includes('oceanic') || feature.properties?.name?.toLowerCase().includes('pacific');
-                // 統合された国は少し太くする
-                const isUnionCountry = ['USA', 'Canada', 'Australia', 'China', 'Russia'].includes(feature.properties?.id);
-                return { color: '#f97316', weight: (isOceanic || isUnionCountry) ? 2.0 : 1.0, dashArray: '', fillOpacity: 0 };
+                const name = feature.properties?.name?.toLowerCase() || '';
+                const isOceanic = name.includes('oceanic') || name.includes('pacific');
+                return { color: '#f97316', weight: isOceanic ? 2.5 : 1.2, dashArray: '', fillOpacity: 0 };
             };
 
             const createShiftedGeoJSON = (offsetLng) => {
-                return L.geoJSON(finalData, {
+                return L.geoJSON(processedData, {
                     coordsToLatLng: (coords) => new L.LatLng(coords[1], coords[0] + offsetLng, coords[2]),
                     style: firStyle,
                     onEachFeature: (feature, layer) => {
@@ -1223,7 +1123,7 @@ const WeatherRadarView = ({ navlogData, forceRefreshToken }) => {
 };
 
 // =========================================================================
-// Main App Component
+// MAIN APP
 // =========================================================================
 export default function App() {
   const [navlogData, setNavlogData] = useState(null);
@@ -1237,140 +1137,98 @@ export default function App() {
   const [weatherTimes, setWeatherTimes] = useState([]); 
   const [timeIndex, setTimeIndex] = useState(0);
   const [isLoadingWeather, setIsLoadingWeather] = useState(false);
-  const [forceRefreshToken, setForceRefreshToken] = useState(0);
+  const [forceRefreshCounter, setForceRefreshCounter] = useState(0);
 
-  // LocalStorageからデータの復元
-  useEffect(() => {
-    try {
-        const savedNavlog = localStorage.getItem('navlogData');
-        const savedRoute = localStorage.getItem('routeWps');
-        const savedWeather = localStorage.getItem('weatherData');
-        const savedWeatherTimes = localStorage.getItem('weatherTimes');
-        
-        if (savedNavlog) setNavlogData(JSON.parse(savedNavlog));
-        if (savedRoute) setRouteWps(JSON.parse(savedRoute));
-        if (savedWeather) setWeatherData(JSON.parse(savedWeather));
-        if (savedWeatherTimes) setWeatherTimes(JSON.parse(savedWeatherTimes));
-    } catch (e) {
-        console.warn('Failed to restore data from localStorage', e);
-    }
-  }, []);
-
-  const showToast = (message) => {
+  const showToast = useCallback((message) => {
     setToastData({ message, visible: true });
     setTimeout(() => setToastData({ message: '', visible: false }), 4000);
-  };
+  }, []);
+
+  // 1. LocalStorageからの初期データ復元
+  useEffect(() => {
+    const savedData = localStorage.getItem('wxRadarApp_v1_SavedState');
+    if (savedData) {
+      try {
+        const parsed = JSON.parse(savedData);
+        if (parsed.navlogData) {
+            setNavlogData(parsed.navlogData);
+            if (parsed.routeWps) {
+                setRouteWps(parsed.routeWps);
+                fetchWeatherDataForRoute(parsed.routeWps); // 気象データは再取得
+            }
+        }
+      } catch (err) { console.error('Failed to parse saved state', err); }
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // 2. データ更新時にLocalStorageへ保存
+  useEffect(() => {
+    if (navlogData || routeWps.length > 0) {
+      const stateToSave = { navlogData, routeWps };
+      localStorage.setItem('wxRadarApp_v1_SavedState', JSON.stringify(stateToSave));
+    }
+  }, [navlogData, routeWps]);
+
+  // 3. 自動アップデート検知 (ETag / Last-Modifiedチェック)
+  useEffect(() => {
+    let lastEtag = null;
+    let lastModified = null;
+
+    const checkForUpdates = async () => {
+      try {
+        if (process.env.NODE_ENV === 'development') return;
+        const res = await fetch(window.location.href, { method: 'HEAD', cache: 'no-store' });
+        const currentEtag = res.headers.get('ETag');
+        const currentModified = res.headers.get('Last-Modified');
+
+        if (lastEtag && currentEtag && lastEtag !== currentEtag) {
+          window.location.reload(true);
+        } else if (lastModified && currentModified && lastModified !== currentModified) {
+          window.location.reload(true);
+        } else {
+          lastEtag = currentEtag || lastEtag;
+          lastModified = currentModified || lastModified;
+        }
+      } catch (e) {
+        // オフラインやフェッチエラー時は無視
+      }
+    };
+
+    checkForUpdates(); // 初回
+    const interval = setInterval(checkForUpdates, 10 * 60 * 1000); // 10分毎
+    window.addEventListener('focus', checkForUpdates); 
+    window.addEventListener('online', checkForUpdates);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', checkForUpdates);
+      window.removeEventListener('online', checkForUpdates);
+    };
+  }, []);
 
   const processParsedData = async (parsedData) => {
       if (parsedData && parsedData.newPlan.length > 0) {
           setNavlogData(parsedData);
-          localStorage.setItem('navlogData', JSON.stringify(parsedData));
           
-          let wps = [];
+          const wps = [];
           if (parsedData.depIcao) {
               const depCoord = parseWaypointToLatLng(parsedData.depIcao);
-              if (depCoord) wps.push({ ...depCoord, fl: 0, name: parsedData.depIcao });
+              // 重複登録を防ぐため、最初のWPがDEPと同じ名前でない場合のみ追加
+              if (depCoord && parsedData.newPlan[0].wp !== parsedData.depIcao) wps.push({ ...depCoord, fl: 0 });
           }
-          
-          // TOC, TODの座標を前後のウェイポイントから中間点として自動補完する
-          let rawPlan = parsedData.newPlan.map(wp => {
+          parsedData.newPlan.forEach(wp => {
+              if (!wp || !wp.wp) return;
               const coord = parseWaypointToLatLng(wp);
-              return { ...wp, lat: coord ? coord.lat : null, lon: coord ? coord.lon : null, name: coord ? coord.name : wp.wp };
+              if (coord) wps.push({ ...coord, fl: wp.fl || 350 });
           });
-
-          for (let i = 0; i < rawPlan.length; i++) {
-              if ((rawPlan[i].name === 'TOC' || rawPlan[i].name === 'TOD') && !rawPlan[i].lat) {
-                  let prev = null;
-                  for (let j = i - 1; j >= 0; j--) { if (rawPlan[j].lat) { prev = rawPlan[j]; break; } }
-                  if (!prev && wps.length > 0) prev = wps[wps.length - 1]; 
-
-                  let next = null;
-                  for (let j = i + 1; j < rawPlan.length; j++) { if (rawPlan[j].lat) { next = rawPlan[j]; break; } }
-                  
-                  if (prev && next) {
-                      rawPlan[i].lat = (prev.lat + next.lat) / 2;
-                      rawPlan[i].lon = (prev.lon + next.lon) / 2;
-                  } else if (prev) {
-                      rawPlan[i].lat = prev.lat; rawPlan[i].lon = prev.lon;
-                  }
-              }
-          }
-
-          rawPlan.forEach(wp => {
-              if (wp.lat && wp.lon) {
-                  // 出発地と全く同じ名前のWPが最初にある場合は重複を避けるためスキップ
-                  if (wps.length === 1 && wps[0].name === wp.name) return;
-                  wps.push({ lat: wp.lat, lon: wp.lon, name: wp.name, fl: wp.fl || 350 });
-              }
-          });
-
           if (parsedData.destIcao) {
               const destCoord = parseWaypointToLatLng(parsedData.destIcao);
-              if (destCoord) {
-                  // 最後のWPと到着地が同じ名前の場合は追加せず、最後のWPの高度を0に設定
-                  if (wps.length > 0 && wps[wps.length - 1].name === parsedData.destIcao) {
-                      wps[wps.length - 1].fl = 0;
-                  } else {
-                      wps.push({ ...destCoord, fl: 0, name: parsedData.destIcao });
-                  }
-              }
+              // 重複登録を防ぐため、最後のWPがDESTと同じ名前でない場合のみ追加
+              if (destCoord && parsedData.newPlan[parsedData.newPlan.length - 1].wp !== parsedData.destIcao) wps.push({ ...destCoord, fl: 0 });
           }
-
-          // 最初と最後は強制的に地上(高度0)とする
-          if (wps.length > 0) wps[0].fl = 0;
-          if (wps.length > 1) wps[wps.length - 1].fl = 0;
-
-          // 距離ベースの高度補間 (SFC〜TOC, TOD〜SFC の直線化)
-          let totalDist = 0;
-          wps.forEach((wp, idx) => {
-              if (idx === 0) { wp.accDist = 0; return; }
-              wp.accDist = totalDist + getDistanceNM(wps[idx - 1].lat, wps[idx - 1].lon, wp.lat, wp.lon);
-              totalDist = wp.accDist;
-          });
-
-          const tocIdx = wps.findIndex(w => w.name === 'TOC');
-          if (tocIdx > 0) {
-              const tocDist = wps[tocIdx].accDist;
-              const tocFl = wps[tocIdx].fl;
-              for (let i = 1; i < tocIdx; i++) {
-                  wps[i].fl = Math.round(tocFl * (wps[i].accDist / tocDist));
-              }
-          } else if (wps.length > 2) {
-              // TOCがない場合、最初の100NMを上昇フェーズとみなす
-              const cruiseFl = wps[Math.floor(wps.length/2)].fl;
-              for (let i = 1; i < wps.length - 1; i++) {
-                  if (wps[i].accDist < 100) wps[i].fl = Math.round(cruiseFl * (wps[i].accDist / 100));
-                  else break;
-              }
-          }
-
-          const todIdx = wps.findIndex(w => w.name === 'TOD');
-          if (todIdx > 0 && todIdx < wps.length - 1) {
-              const todDist = wps[todIdx].accDist;
-              const todFl = wps[todIdx].fl;
-              const descentDist = wps[wps.length - 1].accDist - todDist;
-              if (descentDist > 0) {
-                  for (let i = todIdx + 1; i < wps.length - 1; i++) {
-                      wps[i].fl = Math.round(todFl * (1 - (wps[i].accDist - todDist) / descentDist));
-                  }
-              }
-          } else if (wps.length > 2) {
-              // TODがない場合、最後の100NMを降下フェーズとみなす
-              const total = wps[wps.length-1].accDist;
-              for (let i = wps.length - 2; i > 0; i--) {
-                  const remain = total - wps[i].accDist;
-                  if (remain < 100) {
-                      // 直前の高度を元に地上へ向かって線形補間
-                      wps[i].fl = Math.round(wps[i].fl * (remain / 100));
-                  }
-              }
-          }
-
           setRouteWps(wps);
-          localStorage.setItem('routeWps', JSON.stringify(wps));
-          
           setIsLoadModalOpen(false);
-          showToast(`ルートを読み込みました: ${parsedData.depIcao} -> ${parsedData.destIcao}`);
+          showToast(`ルートを読み込みました: ${parsedData.depIcao || 'DEP'} -> ${parsedData.destIcao || 'ARR'}`);
 
           if (wps.length > 0) fetchWeatherDataForRoute(wps);
       } else {
@@ -1401,7 +1259,6 @@ export default function App() {
               return `${d.getUTCHours().toString().padStart(2, '0')}:${d.getUTCMinutes().toString().padStart(2, '0')}Z`;
           });
           setWeatherTimes(times);
-          localStorage.setItem('weatherTimes', JSON.stringify(times));
 
           const levelMap = { 1000: { fl: 0 }, 850: { fl: 50 }, 700: { fl: 100 }, 500: { fl: 180 }, 400: { fl: 240 }, 300: { fl: 300 }, 250: { fl: 340 }, 200: { fl: 390 }, 150: { fl: 450 } };
 
@@ -1440,7 +1297,6 @@ export default function App() {
               wData.push(timeSlice);
           }
           setWeatherData(wData);
-          localStorage.setItem('weatherData', JSON.stringify(wData));
           setTimeIndex(0); 
           showToast('気象データを反映しました。');
       } catch (err) { console.error(err); showToast('気象データの取得に失敗しました。'); } 
@@ -1472,6 +1328,11 @@ export default function App() {
     reader.readAsArrayBuffer(file);
   };
 
+  const handleManualRefresh = () => {
+    setForceRefreshCounter(prev => prev + 1);
+    showToast('レーダー・衛星画像を最新に更新しています...');
+  };
+
   return (
     <div className="flex flex-col h-screen bg-slate-950 overflow-hidden font-sans text-slate-100">
       <Toast message={toastData.message} visible={toastData.visible} onClose={() => setToastData({ ...toastData, visible: false })} />
@@ -1480,8 +1341,8 @@ export default function App() {
       <header className="flex items-center justify-between px-4 py-3 bg-slate-900 border-b border-slate-800 shrink-0 relative z-20">
         <div className="flex items-center gap-3">
           <span className="text-sky-400 bg-sky-900/30 p-1.5 rounded-lg border border-sky-800"><IconPlane /></span>
-          <h1 className="text-white font-black text-lg tracking-wide hidden sm:flex items-end gap-2">GLOBAL WX RADAR <span className="text-[10px] text-sky-400 font-mono font-normal">v1.24.0</span></h1>
-          <h1 className="text-white font-black text-lg tracking-wide sm:hidden flex items-end gap-2">WX RADAR <span className="text-[10px] text-sky-400 font-mono font-normal">v1.24.0</span></h1>
+          <h1 className="text-white font-black text-lg tracking-wide hidden sm:flex items-end gap-2">GLOBAL WX RADAR <span className="text-[10px] text-sky-400 font-mono font-normal">{APP_VERSION}</span></h1>
+          <h1 className="text-white font-black text-lg tracking-wide sm:hidden flex items-end gap-2">WX RADAR <span className="text-[10px] text-sky-400 font-mono font-normal">{APP_VERSION}</span></h1>
         </div>
 
         <div className="flex bg-slate-950 p-1 rounded-lg border border-slate-800 absolute left-1/2 transform -translate-x-1/2">
@@ -1490,11 +1351,11 @@ export default function App() {
         </div>
 
         <div className="flex items-center gap-2">
-            <button onClick={() => { setForceRefreshToken(prev => prev + 1); showToast('気象・レーダー画像を更新しています...'); }} className="bg-slate-800 hover:bg-slate-700 text-sky-400 font-bold py-2 px-3 rounded-lg flex items-center justify-center gap-2 transition-colors border border-slate-700 text-sm">
-                <IconRefreshCw />
+            <button onClick={handleManualRefresh} className="bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white font-bold p-2 rounded-lg transition-colors border border-slate-700 shadow-sm" title="Refresh Weather Layers">
+                <IconRefresh />
             </button>
             <button onClick={() => setIsLoadModalOpen(true)} className="bg-sky-600 hover:bg-sky-500 text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors shadow-lg border border-sky-400/30 text-sm">
-                <IconDownloadCloud /><span className="hidden sm:inline">Load Plan</span>
+                <IconDownloadCloud /><span>Load Plan</span>
             </button>
         </div>
       </header>
@@ -1509,7 +1370,7 @@ export default function App() {
 
       <main className="flex-1 relative overflow-hidden">
         <div className={`absolute inset-0 ${activeTab === 'map' ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'}`}>
-            <WeatherRadarView navlogData={navlogData} forceRefreshToken={forceRefreshToken} />
+            <WeatherRadarView navlogData={navlogData} forceRefreshCounter={forceRefreshCounter} />
         </div>
         {activeTab === 'section' && (
             <div className="absolute inset-0 z-10 bg-slate-950">

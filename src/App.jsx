@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 
 // =========================================================================
 // アプリケーションバージョン
 // =========================================================================
-const APP_VERSION = "v1.27.0";
+const APP_VERSION = "v1.30.0";
 
 // =========================================================================
 // アイコンコンポーネント
@@ -43,9 +43,11 @@ const AIRSPACE_DATA = [
     { name: 'HYAKURI Area 1', type: 'training', alt: 'SFC - 5000', coords: [[36.2517, 142.0592], [36.6786, 142.1753], [37.1564, 142.3581], [37.7733, 142.5850], [38.1697, 142.6883], [38.1697, 142.9908], [37.7794, 142.6861], [37.3200, 142.9908], [36.2500, 142.9908]] },
     { name: 'AREA P-1', type: 'training', alt: 'UNL', coords: [[32.0033, 129.5811], [31.3036, 129.5811], [30.3703, 127.9981], [32.5033, 127.1981], [32.5033, 127.4981], [34.0031, 128.6311], [34.3447, 128.9128], [33.8494, 129.3356], [33.8367, 129.3644], [33.1700, 128.9978], [33.0033, 128.4978], [32.3200, 128.4978]] },
     { name: 'AREA G-1', type: 'training', alt: 'UNL', coords: [[40.0025, 135.9964], [39.8358, 135.9967], [39.0525, 136.9969], [39.0028, 136.9969], [38.9197, 137.1633], [38.6889, 137.4739], [38.1958, 137.9969], [38.0697, 137.9969], [36.3961, 134.4503], [36.4267, 133.8633], [36.8336, 133.0878], [36.9500, 133.0778], [37.8844, 132.9972], [38.0028, 132.9972], [40.0025, 135.3261]] },
-    
-    // AIP 新規追加 (FL200以上)
-    { name: 'YAUSUBETSU', type: 'restricted', alt: 'SFC - 36000', coords: [[43.3414, 144.7069], [43.3281, 144.9014], [43.3025, 145.0306], [43.2303, 145.0325], [43.2217, 144.8708], [43.2928, 144.6694]] },
+    { name: 'Area A-1', type: 'training', alt: 'FL600/FL240', coords: [[43.5858, 141.4131], [43.5025, 141.9128], [43.3600, 142.0308], [43.7897, 142.2581], [43.8511, 141.4275]] },
+    { name: 'Area A-11', type: 'training', alt: 'FL600/FL240', coords: [[43.3600, 142.0308], [43.2858, 142.0961], [43.0561, 142.2853], [43.2858, 142.6725], [43.4350, 142.9261], [43.7897, 142.2581]] },
+    { name: 'Area A-12', type: 'training', alt: 'FL240/FL200', coords: [[43.3600, 142.0308], [43.2858, 142.0961], [43.2858, 142.6725], [43.4350, 142.9261], [43.7897, 142.2581]] },
+    { name: 'Area A-13', type: 'training', alt: 'FL600/FL240', coords: [[43.0561, 142.2853], [43.0025, 142.3294], [43.0025, 144.0367], [43.2858, 143.9400], [43.4133, 143.8725], [43.3658, 143.7258], [43.7292, 143.4258], [43.4350, 142.9261], [43.2858, 142.6725]] },
+    { name: 'YAUSUBETSU', type: 'restricted', alt: 'GND - 36000', coords: [[43.3414, 144.7069], [43.3281, 144.9014], [43.3025, 145.0306], [43.2303, 145.0325], [43.2217, 144.8708], [43.2928, 144.6694]] },
     { name: 'R-127 OJOJI-HARA', type: 'restricted', alt: 'GND - 25000', coords: [[38.5194, 140.6797], [38.5194, 140.8631], [38.4694, 140.8631], [38.4694, 140.6797]] },
     { name: 'R-129 NORTHERN HONSHU', type: 'restricted', alt: 'SFC - 35000', coords: [[40.8361, 142.1797], [40.8361, 142.9961], [40.7361, 142.9961], [40.4028, 142.5464], [40.4028, 142.2297]] },
     { name: 'R-131 HIDAKAOKI', type: 'restricted', alt: 'SFC - UNL', coords: [[42.0692, 142.2794], [41.7358, 142.9628], [41.4528, 142.7128], [41.7608, 142.0881], [41.9858, 142.0631]] },
@@ -182,9 +184,10 @@ const formatRvTime = (unixTime) => {
   return `${d.getUTCHours().toString().padStart(2, '0')}:${d.getUTCMinutes().toString().padStart(2, '0')}Z`;
 };
 
-const formatJmaTime = (basetime) => {
-  if (!basetime || basetime.length < 12) return '';
-  return `${basetime.substring(8, 10)}:${basetime.substring(10, 12)}Z`;
+// HIMAWARI時間表示の修正 (YYYYMMDDHHMM00 から HH:MMZ を正確に切り出す)
+const formatJmaTime = (timeStr) => {
+  if (!timeStr || typeof timeStr !== 'string' || timeStr.length < 12) return '';
+  return `${timeStr.substring(8, 10)}:${timeStr.substring(10, 12)}Z`;
 };
 
 // =========================================================================
@@ -195,9 +198,26 @@ const parseNavlogText = (text) => {
     const fNoMatch = text.match(/(?:ANA|JAL|NCA|NH|JL)(\d{2,4}[A-Z]?)/);
     let fNo = fNoMatch ? fNoMatch[0] : "UNKNOWN";
     
-    const routeMatch = text.match(/([A-Z]{4})\s*-\s*([A-Z]{4})/);
-    const depIcao = routeMatch ? routeMatch[1] : null;
-    const destIcao = routeMatch ? routeMatch[2] : null;
+    // 出発・到着空港コードの抽出
+    let depIcao = null;
+    let destIcao = null;
+    
+    const routePattern1 = text.match(/ROUTE\s+([A-Z]{4})\s*[-/]?\s*([A-Z]{4})/i);
+    const routePattern2 = text.match(/(?:^|\n)\s*([A-Z]{4})\s*[-/]\s*([A-Z]{4})\s/);
+    
+    if (routePattern1) {
+        depIcao = routePattern1[1];
+        destIcao = routePattern1[2];
+    } else if (routePattern2) {
+        depIcao = routePattern2[1];
+        destIcao = routePattern2[2];
+    } else {
+        const routeMatch = text.match(/([A-Z]{4})\s*-\s*([A-Z]{4})/);
+        if (routeMatch) {
+            depIcao = routeMatch[1];
+            destIcao = routeMatch[2];
+        }
+    }
 
     let currentFl = 350;
     const globalFlMatch = text.match(/FL\s*([1-4]\d{2})/i) || text.match(/F([1-4]\d{2})\b/i);
@@ -263,8 +283,9 @@ const parseNavlogText = (text) => {
         const isAlphaWp = /^[A-Z][A-Z0-9]{1,5}$/.test(wpNameCandidate) && !ignoreList.has(wpNameCandidate);
         const isArincWp = /^\d{2}[NSWE]\d{2}$/.test(wpNameCandidate);
         const isSpecialWp = ["TOC", "TOD"].includes(wpNameCandidate);
+        const isApWp = wpNameCandidate === depIcao || wpNameCandidate === destIcao;
 
-        if (!isCoord && (isAlphaWp || isArincWp || isSpecialWp)) {
+        if (!isCoord && (isAlphaWp || isArincWp || isSpecialWp || isApWp)) {
             if (newPlan.length > 0 && newPlan[newPlan.length - 1].wp === wpNameCandidate) continue;
 
             let wpFl = currentFl;
@@ -285,16 +306,31 @@ const parseNavlogText = (text) => {
                 }
             }
             
-            currentFl = wpFl; 
+            if (isApWp) { wpFl = 0; } else { currentFl = wpFl; }
 
             pendingLat = null;
-            newPlan.push({ wp: wpNameCandidate, latLon: pendingLatLon, fl: currentFl });
-            if (destIcao && wpNameCandidate === destIcao) break; 
+            newPlan.push({ wp: wpNameCandidate, latLon: pendingLatLon, fl: wpFl });
+            if (destIcao && wpNameCandidate === destIcao && pendingLatLon) break; 
             pendingLatLon = null;
         }
     }
 
     if (newPlan.length >= 2 && newPlan[newPlan.length - 1].wp === newPlan[newPlan.length - 2].wp) newPlan.pop();
+    
+    // フェイルセーフ。出発地と最初のWPの距離が極端に遠い場合の除外
+    if (depIcao && newPlan.length > 0 && newPlan[0].latLon) {
+        const depCoord = parseWaypointToLatLng(newPlan[0]);
+        const nextWpCoord = newPlan.length > 1 ? parseWaypointToLatLng(newPlan[1]) : null;
+        if (depCoord && nextWpCoord && depCoord.name === depIcao) {
+            const dist = getDistanceNM(depCoord.lat, depCoord.lon, nextWpCoord.lat, nextWpCoord.lon);
+            if (dist > 3000) {
+                 console.warn("出発空港の誤抽出を検知しました:", depIcao);
+                 newPlan.shift();
+                 depIcao = newPlan.length > 0 ? newPlan[0].wp : null;
+            }
+        }
+    }
+
     return { newPlan, fNo, depIcao, destIcao };
 };
 
@@ -396,10 +432,10 @@ const CrossSectionView = ({ routeData, weatherData, timeIndex, showTemp }) => {
 
     const currentWeatherData = weatherData[timeIndex] || {};
 
-    const drawWindBarb = (wp, fl, x, y, windData) => {
+    const drawWindBarb = (wp, idx, fl, x, y, windData) => {
         if (!windData || windData.ws === undefined) return null;
         const { wd, ws, temp } = windData;
-        const tooltipId = `${wp.name}-${fl}`;
+        const tooltipId = `${wp.name}-${idx}-${fl}`;
         const isTooltipActive = activeTooltip === tooltipId;
 
         if (ws < 5) return (
@@ -490,7 +526,7 @@ const CrossSectionView = ({ routeData, weatherData, timeIndex, showTemp }) => {
             const cellHeight = Math.abs(yUpper - y);
 
             if (wind) {
-                windArrows.push(drawWindBarb(wp, fl, x1, y, wind));
+                windArrows.push(drawWindBarb(wp, i, fl, x1, y, wind));
                 if (windUpper) {
                     const u1 = -wind.ws * Math.sin(toRad(wind.wd)); const v1 = -wind.ws * Math.cos(toRad(wind.wd));
                     const u2 = -windUpper.ws * Math.sin(toRad(windUpper.wd)); const v2 = -windUpper.ws * Math.cos(toRad(windUpper.wd));
@@ -501,7 +537,7 @@ const CrossSectionView = ({ routeData, weatherData, timeIndex, showTemp }) => {
                     else if (shearPer1000ft >= 4) { shearColor = '#eab308'; opacity = 0.3; }
                     else if (shearPer1000ft >= 2) { shearColor = '#22c55e'; opacity = 0.15; }
 
-                    if (shearColor) shearRects.push(<rect key={`shear-${wp.name}-${fl}`} x={x1} y={yUpper} width={cellWidth} height={cellHeight} fill={shearColor} opacity={opacity} />);
+                    if (shearColor) shearRects.push(<rect key={`shear-${wp.name}-${i}-${fl}`} x={x1} y={yUpper} width={cellWidth} height={cellHeight} fill={shearColor} opacity={opacity} />);
                 }
             }
         }
@@ -569,39 +605,21 @@ const CrossSectionView = ({ routeData, weatherData, timeIndex, showTemp }) => {
         }
     }
 
-    let profilePts = [];
-    pointsWithDist.forEach((wp, idx) => {
-        let currentFL = wp.fl || 0;
-        if (idx === 0) currentFL = 0;
-        if (idx === pointsWithDist.length - 1) currentFL = 0;
-        profilePts.push(`${getX(wp.accDist)},${getY(currentFL)}`);
-    });
-    
-    if (pointsWithDist.length > 2) {
-        const hasTOC = pointsWithDist.some(wp => wp.name === 'TOC');
-        const hasTOD = pointsWithDist.some(wp => wp.name === 'TOD');
-        const cruiseFL = Math.max(...pointsWithDist.map(w => w.fl || 0));
+    const displayPoints = pointsWithDist.map((wp, idx, arr) => {
+        let fl = wp.fl || 0;
+        if (idx === 0) fl = 0; 
+        if (idx === arr.length - 1) fl = 0; 
 
-        if (!hasTOC) {
-            for (let i = 1; i < pointsWithDist.length - 1; i++) {
-                if (pointsWithDist[i].accDist < 100 && (pointsWithDist[i].fl === 0 || !pointsWithDist[i].fl)) {
-                    profilePts[i] = `${getX(pointsWithDist[i].accDist)},${getY(cruiseFL * (pointsWithDist[i].accDist / 100))}`;
-                } else if (pointsWithDist[i].accDist >= 100 && !hasTOD) {
-                    profilePts[i] = `${getX(pointsWithDist[i].accDist)},${getY(cruiseFL)}`;
-                }
-            }
+        if (wp.name === 'TOC' || wp.name === 'TOD') {
+             let cruiseFl = 350;
+             if (wp.name === 'TOC' && arr[idx+1]) cruiseFl = arr[idx+1].fl || 350;
+             if (wp.name === 'TOD' && arr[idx-1]) cruiseFl = arr[idx-1].fl || 350;
+             fl = cruiseFl;
         }
-        if (!hasTOD) {
-             const total = totalDist;
-             for (let i = pointsWithDist.length - 2; i > 0; i--) {
-                const distFromDest = total - pointsWithDist[i].accDist;
-                if (distFromDest < 100 && (pointsWithDist[i].fl === 0 || !pointsWithDist[i].fl)) {
-                    profilePts[i] = `${getX(pointsWithDist[i].accDist)},${getY(cruiseFL * (distFromDest / 100))}`;
-                }
-            }
-        }
-    }
-    const profilePath = profilePts.join(' L ');
+        return { ...wp, displayFl: fl };
+    });
+
+    const profilePath = displayPoints.map(wp => `${getX(wp.accDist)},${getY(wp.displayFl)}`).join(' L ');
 
     const handleWheel = (e) => {
         if (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return; 
@@ -655,7 +673,7 @@ const CrossSectionView = ({ routeData, weatherData, timeIndex, showTemp }) => {
                 onTouchMove={handleTouchMove}
             >
                 <div style={{ width: Math.max(dimensions.width, innerWidth + PADDING_X * 2), height: '100%' }}>
-                    <svg width="100%" height="100%" className="block">
+                    <svg width="100%" height="100%" className="block select-none">
                         {[0, 100, 200, 300, 400].map(fl => (
                             <g key={`grid-fl-${fl}`}>
                                 <line x1={PADDING_X} y1={getY(fl)} x2={PADDING_X + innerWidth} y2={getY(fl)} stroke="#334155" strokeWidth="1" strokeDasharray="4 4" />
@@ -669,11 +687,11 @@ const CrossSectionView = ({ routeData, weatherData, timeIndex, showTemp }) => {
                         
                         <path d={`M ${profilePath}`} fill="none" stroke="#d946ef" strokeWidth="2.5" />
                         
-                        {pointsWithDist.map((wp, idx) => (
+                        {displayPoints.map((wp, idx) => (
                             <g key={`wp-${idx}`} transform={`translate(${getX(wp.accDist)}, ${innerHeight + PADDING_Y_TOP})`}>
                                 <line x1="0" y1="0" x2="0" y2="5" stroke="#94a3b8" strokeWidth="1" />
                                 <text x="0" y="20" fill="#e2e8f0" fontSize="10" textAnchor="middle" transform="rotate(45, 0, 20)">{wp.name}</text>
-                                <circle cx="0" cy={-(innerHeight * ((idx === 0 || idx === pointsWithDist.length - 1) ? 0 : (wp.fl || 0)) / MAX_FL)} r="3.5" fill="#fdf4ff" stroke="#d946ef" strokeWidth="2" />
+                                <circle cx="0" cy={-(innerHeight * (wp.displayFl / MAX_FL))} r="3.5" fill="#fdf4ff" stroke="#d946ef" strokeWidth="2" />
                             </g>
                         ))}
                     </svg>
@@ -686,7 +704,7 @@ const CrossSectionView = ({ routeData, weatherData, timeIndex, showTemp }) => {
 // =========================================================================
 // メインマップコンポーネント
 // =========================================================================
-const WeatherRadarView = ({ navlogData }) => {
+const WeatherRadarView = ({ navlogData, frameIndex, setFrameIndex, isPlaying, setIsPlaying, maxFrames, setMaxFrames }) => {
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const layersRef = useRef({});
@@ -706,8 +724,6 @@ const WeatherRadarView = ({ navlogData }) => {
 
   const [rvRadarFrames, setRvRadarFrames] = useState([]);
   const [jmaFrames, setJmaFrames] = useState([]);
-  const [frameIndex, setFrameIndex] = useState(0); 
-  const [isPlaying, setIsPlaying] = useState(false);
 
   useEffect(() => {
     const handleRefresh = () => { fetchData(); };
@@ -775,7 +791,6 @@ const WeatherRadarView = ({ navlogData }) => {
 
           const errImg = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
           
-          // Aviation Weather Center (AWC) Global IR WMS Layer
           globalIrLayerRef.current = L.tileLayer.wms('https://aviationweather.gov/cgi-bin/wms/satellite', { 
               layers: 'global_ir', format: 'image/png', transparent: true, opacity: opacity, zIndex: 1 
           }).addTo(map);
@@ -794,22 +809,22 @@ const WeatherRadarView = ({ navlogData }) => {
     return () => { isMounted = false; if (mapInstanceRef.current) { mapInstanceRef.current.remove(); mapInstanceRef.current = null; } };
   }, []);
 
-  let activeLengths = [];
-  if (showHimawari) activeLengths.push(jmaFrames.length);
-  if (showRadar) activeLengths.push(rvRadarFrames.length);
-  const maxFrames = activeLengths.length > 0 ? Math.max(...activeLengths, 1) : 1;
-  const safeFrameIndex = Math.max(0, Math.min(frameIndex, maxFrames - 1));
+  useEffect(() => {
+      let activeLengths = [];
+      if (showHimawari) activeLengths.push(jmaFrames.length);
+      if (showRadar) activeLengths.push(rvRadarFrames.length);
+      
+      const mFrames = activeLengths.length > 0 ? Math.max(...activeLengths, 1) : 1;
+      setMaxFrames(mFrames);
+      setFrameIndex(mFrames - 1);
+      setIsPlaying(false);
+  }, [showHimawari, showRadar, jmaFrames.length, rvRadarFrames.length, setMaxFrames, setFrameIndex, setIsPlaying]);
 
+  const safeFrameIndex = Math.max(0, Math.min(frameIndex, maxFrames - 1));
   const getLayerFrameIndex = (layerFramesLength) => {
       if (layerFramesLength <= 1 || maxFrames <= 1) return layerFramesLength - 1;
       return Math.floor((safeFrameIndex / (maxFrames - 1)) * (layerFramesLength - 1));
   };
-
-  useEffect(() => {
-    let timer;
-    if (isPlaying) { timer = setInterval(() => setFrameIndex(prev => (maxFrames <= 1) ? 0 : (prev + 1) % maxFrames), 1000); }
-    return () => clearInterval(timer);
-  }, [isPlaying, maxFrames]);
 
   useEffect(() => {
     if (!isMapLoaded || !himawariLayerRef.current) return;
@@ -829,8 +844,6 @@ const WeatherRadarView = ({ navlogData }) => {
     goesLayerRef.current.setOpacity(showGoes ? opacity : 0);
 
     meteosatLayerRef.current.setOpacity(showMeteosat ? opacity : 0);
-    
-    // Global IR (AWC) の不透明度制御
     globalIrLayerRef.current.setOpacity(showGlobalIr ? opacity : 0);
 
     let radarUrl = errImg;
@@ -848,25 +861,19 @@ const WeatherRadarView = ({ navlogData }) => {
     const map = mapInstanceRef.current;
 
     if (layersRef.current.navlogGroup) map.removeLayer(layersRef.current.navlogGroup);
-    if (showNavlogRoute && navlogData && (navlogData.newPlan || navlogData.depIcao)) {
+    if (showNavlogRoute && navlogData && navlogData.newPlan) {
         const navlogGroup = L.layerGroup();
         const routePoints = [];
 
-        if (navlogData.depIcao) {
-            const depCoord = parseWaypointToLatLng(navlogData.depIcao);
-            if (depCoord) routePoints.push(depCoord);
-        }
-        if (navlogData.newPlan) {
-          navlogData.newPlan.forEach(wp => {
+        navlogData.newPlan.forEach(wp => {
             if (!wp || !wp.wp) return;
             const coord = parseWaypointToLatLng(wp);
-            if (coord && (!routePoints.length || routePoints[routePoints.length - 1].name !== coord.name)) routePoints.push(coord);
-          });
-        }
-        if (navlogData.destIcao) {
-            const destCoord = parseWaypointToLatLng(navlogData.destIcao);
-            if (destCoord && (!routePoints.length || routePoints[routePoints.length - 1].name !== destCoord.name)) routePoints.push(destCoord);
-        }
+            if (coord && (coord.lat !== 0 || coord.lon !== 0)) {
+                if (!routePoints.length || routePoints[routePoints.length - 1].name !== coord.name) {
+                    routePoints.push(coord);
+                }
+            }
+        });
 
         if (routePoints.length > 0) {
           const latlngs = routePoints.map(pt => [pt.lat, pt.lon]);
@@ -882,7 +889,7 @@ const WeatherRadarView = ({ navlogData }) => {
           }
 
           routePoints.forEach((pt, index) => {
-            const isAp = pt.isAirport || pt.name === navlogData.depIcao || pt.name === navlogData.destIcao;
+            const isAp = pt.name === navlogData.depIcao || pt.name === navlogData.destIcao;
             const marker = L.circleMarker(latlngs[index], { radius: isAp ? 6 : 4, color: isAp ? '#0ea5e9' : '#ffffff', fillColor: isAp ? '#e0f2fe' : '#38bdf8', fillOpacity: 1.0, weight: 2 });
             marker.bindTooltip(pt.name, { permanent: true, direction: 'right', className: 'nav-tooltip' });
             navlogGroup.addLayer(marker);
@@ -929,7 +936,7 @@ const WeatherRadarView = ({ navlogData }) => {
     const loadFIRs = async () => {
         try {
             const res = await fetch('https://cdn.jsdelivr.net/gh/vatsimnetwork/vatspy-data-project@master/Boundaries.geojson');
-            if (!res.ok) { console.warn(`FIR Fetch Failed with status: ${res.status}`); return; }
+            if (!res.ok) { console.warn(`FIR Fetch Failed: ${res.status}`); return; }
             
             const rawData = await res.json();
             
@@ -940,10 +947,9 @@ const WeatherRadarView = ({ navlogData }) => {
             const caFeatures = [];
             const regularFeatures = [];
 
-            // 1. 国ごとのグループ分け (特定の5カ国のみ抽出)
             rawData.features.forEach(f => {
                 const id = f.properties?.id || '';
-                if (id.length !== 4) return; // メインFIRのみを許可
+                if (id.length !== 4) return; 
 
                 if (id.startsWith('K') || ['PAZA', 'PHZH', 'TJZS', 'KZAK'].includes(id)) {
                     usFeatures.push(f);
@@ -952,15 +958,14 @@ const WeatherRadarView = ({ navlogData }) => {
                 } else if (id.startsWith('Y')) {
                     auFeatures.push(f);
                 } else if (['UU', 'UN', 'UR', 'US', 'UH', 'UL', 'UE', 'UI'].some(prefix => id.startsWith(prefix))) {
-                    ruFeatures.push(f); // ロシアのみを抽出
+                    ruFeatures.push(f); 
                 } else if (id.startsWith('C')) {
-                    caFeatures.push(f); // カナダを抽出
+                    caFeatures.push(f); 
                 } else {
                     regularFeatures.push(f);
                 }
             });
 
-            // 2. 指定国の内部境界線を消去し、外周の辺のみを抽出するアルゴリズム
             const extractOutline = (features) => {
                 const edgeCount = new Map();
                 features.forEach(f => {
@@ -981,14 +986,12 @@ const WeatherRadarView = ({ navlogData }) => {
                             const pt1 = pts[i];
                             const pt2 = pts[i+1];
                             
-                            // 東経180度線に沿った縦の切り取り線を完全にカット
                             const lon1 = pt1[0] % 360;
                             const lon2 = pt2[0] % 360;
                             if (Math.abs(Math.abs(lon1) - 180) < 0.1 && Math.abs(Math.abs(lon2) - 180) < 0.1 && Math.abs(lon1 - lon2) < 0.1) {
                                 continue;
                             }
                             
-                            // 約1km精度で同一辺を判定
                             const k1 = `${pt1[0].toFixed(2)},${pt1[1].toFixed(2)}`;
                             const k2 = `${pt2[0].toFixed(2)},${pt2[1].toFixed(2)}`;
                             if (k1 === k2) continue;
@@ -1020,7 +1023,6 @@ const WeatherRadarView = ({ navlogData }) => {
 
             const finalFeatures = [];
 
-            // 3. 通常の国（180度線のみカットし、そのまま描画）
             regularFeatures.forEach(f => {
                 const multiLines = [];
                 const processRing = (ring) => {
@@ -1044,7 +1046,6 @@ const WeatherRadarView = ({ navlogData }) => {
                         
                         const lon1 = pt1[0] % 360;
                         const lon2 = pt2[0] % 360;
-                        // 180度線をまたぐ垂直線をカット
                         if (Math.abs(Math.abs(lon1) - 180) < 0.1 && Math.abs(Math.abs(lon2) - 180) < 0.1 && Math.abs(lon1 - lon2) < 0.1) {
                             if (currentLine.length > 1) multiLines.push(currentLine);
                             currentLine = [];
@@ -1065,7 +1066,6 @@ const WeatherRadarView = ({ navlogData }) => {
                 });
             });
 
-            // 4. 統合した国を新しいフィーチャーとして追加
             if (usLines.length > 0) finalFeatures.push({ type: 'Feature', properties: { name: 'United States (Integrated FIRs)' }, geometry: { type: 'MultiLineString', coordinates: usLines } });
             if (cnLines.length > 0) finalFeatures.push({ type: 'Feature', properties: { name: 'China (Integrated FIRs)' }, geometry: { type: 'MultiLineString', coordinates: cnLines } });
             if (auLines.length > 0) finalFeatures.push({ type: 'Feature', properties: { name: 'Australia (Integrated FIRs)' }, geometry: { type: 'MultiLineString', coordinates: auLines } });
@@ -1085,12 +1085,11 @@ const WeatherRadarView = ({ navlogData }) => {
                     style: firStyle,
                     onEachFeature: (feature, layer) => {
                         const name = feature.properties?.name || feature.properties?.id;
-                        if (name) layer.bindTooltip(name, { sticky: true, className: 'fir-tooltip' });
+                        if (name && !name.includes('Integrated FIRs')) layer.bindTooltip(name, { sticky: true, className: 'fir-tooltip' });
                     }
                 });
             };
 
-            // 5. 世界のループ描画に合わせて3回重ねる
             firGroup.addLayer(createGeoJSON(0));
             firGroup.addLayer(createGeoJSON(360));
             firGroup.addLayer(createGeoJSON(-360));
@@ -1107,7 +1106,7 @@ const WeatherRadarView = ({ navlogData }) => {
   if (showHimawari) layerNames.push("HIMAWARI");
   if (showGoes) layerNames.push("GOES");
   if (showMeteosat) layerNames.push("METEOSAT");
-  if (showGlobalIr) layerNames.push("GLOBAL IR(AWC)");
+  if (showGlobalIr) layerNames.push("GLOBAL IR");
   if (showRadar) layerNames.push("RADAR");
 
   if (layerNames.length > 0) {
@@ -1193,12 +1192,21 @@ export default function App() {
   const [isLoadingWeather, setIsLoadingWeather] = useState(false);
   const [showTemp, setShowTemp] = useState(false);
   
-  const showToast = (message) => {
+  const [frameIndex, setFrameIndex] = useState(0); 
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [maxFrames, setMaxFrames] = useState(1);
+
+  const showToast = useCallback((message) => {
     setToastData({ message, visible: true });
     setTimeout(() => setToastData({ message: '', visible: false }), 4000);
-  };
+  }, []);
   
-  // 自動アップデート検知
+  useEffect(() => {
+    let timer;
+    if (isPlaying) { timer = setInterval(() => setFrameIndex(prev => (maxFrames <= 1) ? 0 : (prev + 1) % maxFrames), 1000); }
+    return () => clearInterval(timer);
+  }, [isPlaying, maxFrames]);
+
   useEffect(() => {
     const checkForUpdates = async () => {
       try {
@@ -1235,7 +1243,6 @@ export default function App() {
     };
   }, []);
 
-  // ローカルストレージへの自動保存・復元
   useEffect(() => {
     const savedNav = localStorage.getItem('savedNavlogData');
     const savedWps = localStorage.getItem('savedRouteWps');
@@ -1256,20 +1263,29 @@ export default function App() {
       if (parsedData && parsedData.newPlan.length > 0) {
           
           let wps = [];
+          
           if (parsedData.depIcao) {
-              const depCoord = parseWaypointToLatLng(parsedData.depIcao);
-              if (depCoord) wps.push({ ...depCoord, fl: 0 });
+              const firstWp = parseWaypointToLatLng(parsedData.newPlan[0]);
+              if (firstWp && (firstWp.lat !== 0 || firstWp.lon !== 0)) {
+                  wps.push({ ...firstWp, name: parsedData.depIcao, fl: 0 });
+              }
           }
+
           parsedData.newPlan.forEach(wp => {
               if (!wp || !wp.wp) return;
               if (wps.length > 0 && wps[wps.length - 1].name === wp.wp) return;
               const coord = parseWaypointToLatLng(wp);
-              if (coord) wps.push({ ...coord, fl: wp.fl || 350 });
+              if (coord && (coord.lat !== null && coord.lon !== null) && (coord.lat !== 0 || coord.lon !== 0)) {
+                  wps.push({ ...coord, fl: wp.fl || 350 });
+              }
           });
+          
           if (parsedData.destIcao) {
               if (wps.length > 0 && wps[wps.length - 1].name === parsedData.destIcao) wps.pop();
-              const destCoord = parseWaypointToLatLng(parsedData.destIcao);
-              if (destCoord) wps.push({ ...destCoord, fl: 0 });
+              if (wps.length > 0) {
+                  const lastWp = { ...wps[wps.length - 1] };
+                  wps.push({ ...lastWp, name: parsedData.destIcao, fl: 0 });
+              }
           }
           
           setNavlogData(parsedData);
@@ -1278,7 +1294,7 @@ export default function App() {
           localStorage.setItem('savedRouteWps', JSON.stringify(wps));
 
           setIsLoadModalOpen(false);
-          showToast(`ルートを読み込みました: ${parsedData.depIcao} -> ${parsedData.destIcao}`);
+          showToast(`ルートを読み込みました: ${parsedData.depIcao || 'DEP'} -> ${parsedData.destIcao || 'ARR'}`);
 
           if (wps.length > 0) fetchWeatherDataForRoute(wps);
       } else {
@@ -1423,7 +1439,7 @@ export default function App() {
 
       <main className="flex-1 relative overflow-hidden">
         <div className={`absolute inset-0 ${activeTab === 'map' ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'}`}>
-            <WeatherRadarView navlogData={navlogData} />
+            <WeatherRadarView navlogData={navlogData} frameIndex={frameIndex} setFrameIndex={setFrameIndex} isPlaying={isPlaying} setIsPlaying={setIsPlaying} maxFrames={maxFrames} setMaxFrames={setMaxFrames} />
         </div>
         {activeTab === 'section' && (
             <div className="absolute inset-0 z-10 bg-slate-950">

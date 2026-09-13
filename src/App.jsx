@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 // =========================================================================
 // アプリケーションバージョン
 // =========================================================================
-const APP_VERSION = "v1.26.0";
+const APP_VERSION = "v1.27.0";
 
 // =========================================================================
 // アイコンコンポーネント
@@ -26,7 +26,6 @@ const AIRSPACE_DATA = [
     { name: 'ITRA-S (S11-S16)', type: 'itra', alt: 'S11-16: UNL', coords: [[30.2008, 131.5011], [30.4875, 131.2867], [30.9519, 131.6467], [31.5119, 132.1558], [32.0036, 132.5808], [32.0536, 132.6308], [32.0822, 132.7872], [32.3019, 133.4381], [32.5667, 133.9397], [32.5897, 133.9867], [32.6200, 134.0475], [32.7803, 134.5333], [32.8981, 135.0139], [32.5911, 135.0139], [32.5536, 135.0139]] },
     { name: 'ITRA-S (S20-S25)', type: 'itra', alt: 'S20-25: FL450', coords: [[30.2008, 131.5011], [32.5536, 135.0139], [32.1533, 135.0094], [29.9272, 131.7381]] },
     { name: 'ITRA-S (S30-S33)', type: 'itra', alt: 'FL250', coords: [[29.9272, 131.7381], [32.1533, 135.0094], [31.3019, 135.0000], [29.4689, 132.4039]] },
-
     { name: 'MOOSE NORTH', type: 'training', alt: 'SFC - UNL', coords: [[26.9758, 124.9558], [28.4786, 127.0542], [27.8033, 127.3211], [27.2986, 127.2208], [27.0842, 126.9942], [26.6953, 125.2111]] },
     { name: 'MOOSE SOUTH', type: 'training', alt: 'SFC - UNL', coords: [[26.6953, 125.2111], [27.0842, 126.9942], [26.2675, 126.1431], [26.2389, 125.6219]] },
     { name: 'TIGER WEST', type: 'training', alt: 'SFC - UNL', coords: [[26.7900, 129.0672], [27.4686, 129.5064], [27.6461, 130.5586]] },
@@ -45,13 +44,12 @@ const AIRSPACE_DATA = [
     { name: 'AREA P-1', type: 'training', alt: 'UNL', coords: [[32.0033, 129.5811], [31.3036, 129.5811], [30.3703, 127.9981], [32.5033, 127.1981], [32.5033, 127.4981], [34.0031, 128.6311], [34.3447, 128.9128], [33.8494, 129.3356], [33.8367, 129.3644], [33.1700, 128.9978], [33.0033, 128.4978], [32.3200, 128.4978]] },
     { name: 'AREA G-1', type: 'training', alt: 'UNL', coords: [[40.0025, 135.9964], [39.8358, 135.9967], [39.0525, 136.9969], [39.0028, 136.9969], [38.9197, 137.1633], [38.6889, 137.4739], [38.1958, 137.9969], [38.0697, 137.9969], [36.3961, 134.4503], [36.4267, 133.8633], [36.8336, 133.0878], [36.9500, 133.0778], [37.8844, 132.9972], [38.0028, 132.9972], [40.0025, 135.3261]] },
     
-    // AIP 5.1/5.2 新規追加分 (AIPに記載されたFL200以上の空域)
+    // AIP 新規追加 (FL200以上)
     { name: 'YAUSUBETSU', type: 'restricted', alt: 'SFC - 36000', coords: [[43.3414, 144.7069], [43.3281, 144.9014], [43.3025, 145.0306], [43.2303, 145.0325], [43.2217, 144.8708], [43.2928, 144.6694]] },
     { name: 'R-127 OJOJI-HARA', type: 'restricted', alt: 'GND - 25000', coords: [[38.5194, 140.6797], [38.5194, 140.8631], [38.4694, 140.8631], [38.4694, 140.6797]] },
     { name: 'R-129 NORTHERN HONSHU', type: 'restricted', alt: 'SFC - 35000', coords: [[40.8361, 142.1797], [40.8361, 142.9961], [40.7361, 142.9961], [40.4028, 142.5464], [40.4028, 142.2297]] },
     { name: 'R-131 HIDAKAOKI', type: 'restricted', alt: 'SFC - UNL', coords: [[42.0692, 142.2794], [41.7358, 142.9628], [41.4528, 142.7128], [41.7608, 142.0881], [41.9858, 142.0631]] },
     { name: 'R-532', type: 'restricted', alt: 'SFC - 39370', coords: [[38.8531, 142.3631], [38.7364, 142.5297], [38.3531, 142.1631], [38.4697, 141.9964]] },
-
     { name: 'R-144 ENSHUNADA', type: 'restricted', alt: 'SFC - 49213', coords: [[34.2153, 137.3739], [34.0628, 137.6875], [33.9472, 137.7603], [33.8400, 137.1744], [34.1922, 137.0861]] },
     { name: 'R-121 CENTRAL HONSHU', type: 'restricted', alt: 'SFC - 35000', coords: [[36.6697, 141.0800], [36.6697, 141.3467], [36.0033, 141.3467], [36.0033, 141.0800]] },
     { name: 'R-109 Area LIMA', type: 'restricted', alt: 'SFC - UNL', coords: [[32.0286, 132.6308], [32.1536, 132.9975], [31.8036, 132.9975], [32.0369, 133.4975], [31.7036, 133.4975], [31.0703, 132.1308], [31.4203, 132.1308], [31.6369, 132.6308]] },
@@ -696,8 +694,7 @@ const WeatherRadarView = ({ navlogData }) => {
   const [showHimawari, setShowHimawari] = useState(true);
   const [showGoes, setShowGoes] = useState(true); 
   const [showMeteosat, setShowMeteosat] = useState(true); 
-  const [showGlobalIr, setShowGlobalIr] = useState(false); // RainViewer IR
-  const [showArctic, setShowArctic] = useState(false); // SSEC Global IR (WMS)
+  const [showGlobalIr, setShowGlobalIr] = useState(false); 
   const [showRadar, setShowRadar] = useState(true);
   const [showNavlogRoute, setShowNavlogRoute] = useState(true);
   const [showAirspace, setShowAirspace] = useState(true);
@@ -708,7 +705,6 @@ const WeatherRadarView = ({ navlogData }) => {
   const [isMapLoaded, setIsMapLoaded] = useState(false);
 
   const [rvRadarFrames, setRvRadarFrames] = useState([]);
-  const [rvSatFrames, setRvSatFrames] = useState([]);
   const [jmaFrames, setJmaFrames] = useState([]);
   const [frameIndex, setFrameIndex] = useState(0); 
   const [isPlaying, setIsPlaying] = useState(false);
@@ -726,7 +722,6 @@ const WeatherRadarView = ({ navlogData }) => {
         .then(data => {
           const host = data.host || 'https://tilecache.rainviewer.com';
           if (data.radar?.past) setRvRadarFrames(data.radar.past.map(f => ({ ...f, host })));
-          if (data.satellite?.infrared) setRvSatFrames(data.satellite.infrared.map(f => ({ ...f, host })));
         }).catch(err => console.error("RainViewer Fetch Error:", err));
 
       fetch(`https://www.jma.go.jp/bosai/himawari/data/satimg/targetTimes_fd.json?_=${cb}`)
@@ -744,7 +739,6 @@ const WeatherRadarView = ({ navlogData }) => {
   const himawariLayerRef = useRef(null);
   const goesLayerRef = useRef(null); 
   const meteosatLayerRef = useRef(null); 
-  const arcticLayerRef = useRef(null);
   const globalIrLayerRef = useRef(null);
   const radarLayerRef = useRef(null);
 
@@ -764,7 +758,6 @@ const WeatherRadarView = ({ navlogData }) => {
           const map = L.map(mapContainerRef.current, { center: [35.0, 135.0], zoom: 3, zoomControl: false, attributionControl: false, worldCopyJump: true });
           L.control.zoom({ position: 'bottomright' }).addTo(map);
 
-          // ダークベースマップを zIndex 0 に明示して競合を防ぐ
           const darkBase = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', { 
               maxZoom: 16, subdomains: 'abcd', zIndex: 0 
           }).addTo(map);
@@ -782,17 +775,15 @@ const WeatherRadarView = ({ navlogData }) => {
 
           const errImg = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
           
-          // SSEC ARCTIC WMS Layer (zIndex: 1)
-          arcticLayerRef.current = L.tileLayer.wms('https://realearth.ssec.wisc.edu/wms/', { layers: 'globalir', format: 'image/png', transparent: true, opacity: opacity, zIndex: 1 }).addTo(map);
-          // RainViewer Global IR Layer (zIndex: 1)
-          globalIrLayerRef.current = L.tileLayer(errImg, { opacity: opacity, maxNativeZoom: 5, maxZoom: 16, noWrap: false, errorTileUrl: errImg, zIndex: 1 }).addTo(map);
+          // Aviation Weather Center (AWC) Global IR WMS Layer
+          globalIrLayerRef.current = L.tileLayer.wms('https://aviationweather.gov/cgi-bin/wms/satellite', { 
+              layers: 'global_ir', format: 'image/png', transparent: true, opacity: opacity, zIndex: 1 
+          }).addTo(map);
           
-          // GEO Satellites (zIndex: 2, 3, 4)
           meteosatLayerRef.current = L.tileLayer.wms('https://view.eumetsat.int/geoserver/ows', { layers: 'msg_fes:ir108,msg_iodc:ir108', format: 'image/png', transparent: true, version: '1.3.0', opacity: opacity, zIndex: 2 }).addTo(map);
           goesLayerRef.current = L.tileLayer(errImg, { opacity: opacity, maxNativeZoom: 5, maxZoom: 16, noWrap: false, errorTileUrl: errImg, zIndex: 3 }).addTo(map);
           himawariLayerRef.current = L.tileLayer(errImg, { opacity: opacity, maxNativeZoom: 5, maxZoom: 16, noWrap: false, errorTileUrl: errImg, zIndex: 4 }).addTo(map);
           
-          // Radar Layer (zIndex: 10)
           radarLayerRef.current = L.tileLayer(errImg, { opacity: opacity, maxZoom: 16, noWrap: false, errorTileUrl: errImg, zIndex: 10 }).addTo(map);
 
           setIsMapLoaded(true);
@@ -805,7 +796,6 @@ const WeatherRadarView = ({ navlogData }) => {
 
   let activeLengths = [];
   if (showHimawari) activeLengths.push(jmaFrames.length);
-  if (showGlobalIr) activeLengths.push(rvSatFrames.length);
   if (showRadar) activeLengths.push(rvRadarFrames.length);
   const maxFrames = activeLengths.length > 0 ? Math.max(...activeLengths, 1) : 1;
   const safeFrameIndex = Math.max(0, Math.min(frameIndex, maxFrames - 1));
@@ -839,15 +829,8 @@ const WeatherRadarView = ({ navlogData }) => {
     goesLayerRef.current.setOpacity(showGoes ? opacity : 0);
 
     meteosatLayerRef.current.setOpacity(showMeteosat ? opacity : 0);
-    arcticLayerRef.current.setOpacity(showArctic ? opacity : 0);
-
-    let globalIrUrl = errImg;
-    if (showGlobalIr && rvSatFrames.length > 0) {
-        const frame = rvSatFrames[Math.max(0, Math.min(getLayerFrameIndex(rvSatFrames.length), rvSatFrames.length - 1))];
-        // 0_0.pngを使用し、RainViewerの過去IR画像を取得
-        if (frame) globalIrUrl = `${frame.host}${frame.path}/256/{z}/{x}/{y}/0/0_0.png`;
-    }
-    if (globalIrLayerRef.current._url !== globalIrUrl) globalIrLayerRef.current.setUrl(globalIrUrl);
+    
+    // Global IR (AWC) の不透明度制御
     globalIrLayerRef.current.setOpacity(showGlobalIr ? opacity : 0);
 
     let radarUrl = errImg;
@@ -857,7 +840,7 @@ const WeatherRadarView = ({ navlogData }) => {
     }
     if (radarLayerRef.current._url !== radarUrl) radarLayerRef.current.setUrl(radarUrl);
     radarLayerRef.current.setOpacity(showRadar ? opacity : 0);
-  }, [isMapLoaded, frameIndex, opacity, showHimawari, showGoes, showMeteosat, showArctic, showGlobalIr, showRadar, jmaFrames, rvSatFrames, rvRadarFrames, maxFrames]);
+  }, [isMapLoaded, frameIndex, opacity, showHimawari, showGoes, showMeteosat, showGlobalIr, showRadar, jmaFrames, rvRadarFrames, maxFrames]);
 
   useEffect(() => {
     if (!isMapLoaded || !mapInstanceRef.current || !window.L) return;
@@ -915,9 +898,9 @@ const WeatherRadarView = ({ navlogData }) => {
     if (showAirspace) {
         const airspaceGroup = L.layerGroup();
         AIRSPACE_DATA.forEach(airspace => {
-            let color = '#38bdf8'; // training (青)
-            if (airspace.type === 'itra') color = '#eab308'; // itra (黄)
-            else if (airspace.type === 'restricted') color = '#ef4444'; // restricted (赤)
+            let color = '#38bdf8'; 
+            if (airspace.type === 'itra') color = '#eab308'; 
+            else if (airspace.type === 'restricted') color = '#ef4444'; 
             
             const poly = L.polygon(airspace.coords, { color: color, weight: 2, fillColor: color, fillOpacity: 0.15 });
             poly.bindTooltip(`<div class="text-center font-bold"><div class="border-b border-slate-600/50 pb-0.5 mb-0.5">${airspace.name}</div><div class="text-[10px] opacity-80">${airspace.alt}</div></div>`, { sticky: true, className: airspace.type === 'restricted' ? 'airspace-restricted' : 'airspace-tooltip' });
@@ -946,93 +929,177 @@ const WeatherRadarView = ({ navlogData }) => {
     const loadFIRs = async () => {
         try {
             const res = await fetch('https://cdn.jsdelivr.net/gh/vatsimnetwork/vatspy-data-project@master/Boundaries.geojson');
-            if (!res.ok) { console.warn(`FIR Fetch Failed: ${res.status}`); return; }
+            if (!res.ok) { console.warn(`FIR Fetch Failed with status: ${res.status}`); return; }
             
             const rawData = await res.json();
-            const countryEdges = {};
             
-            // 4文字のメインFIRのみを抽出
-            const mainFirs = rawData.features.filter(f => f.properties?.id?.length === 4);
+            const usFeatures = [];
+            const cnFeatures = [];
+            const auFeatures = [];
+            const ruFeatures = [];
+            const caFeatures = [];
+            const regularFeatures = [];
 
-            mainFirs.forEach(f => {
-                const id = f.properties.id;
-                // 国を判別し、同じ国のFIR同士は境界線を相殺する
-                let country = 'OTHER';
-                if (id.startsWith('Z')) country = 'CHINA';
-                else if (id.startsWith('K')) country = 'USA';
-                else if (id.startsWith('Y')) country = 'AUSTRALIA';
-                else if (id.startsWith('U')) country = 'RUSSIA';
-                else if (id.startsWith('C')) country = 'CANADA';
-                else if (id.startsWith('RJ') || id.startsWith('RO')) country = 'JAPAN';
-                else country = id; 
+            // 1. 国ごとのグループ分け (特定の5カ国のみ抽出)
+            rawData.features.forEach(f => {
+                const id = f.properties?.id || '';
+                if (id.length !== 4) return; // メインFIRのみを許可
 
-                if (!countryEdges[country]) countryEdges[country] = {};
-                const edges = countryEdges[country];
+                if (id.startsWith('K') || ['PAZA', 'PHZH', 'TJZS', 'KZAK'].includes(id)) {
+                    usFeatures.push(f);
+                } else if (id.startsWith('Z')) {
+                    cnFeatures.push(f);
+                } else if (id.startsWith('Y')) {
+                    auFeatures.push(f);
+                } else if (['UU', 'UN', 'UR', 'US', 'UH', 'UL', 'UE', 'UI'].some(prefix => id.startsWith(prefix))) {
+                    ruFeatures.push(f); // ロシアのみを抽出
+                } else if (id.startsWith('C')) {
+                    caFeatures.push(f); // カナダを抽出
+                } else {
+                    regularFeatures.push(f);
+                }
+            });
 
+            // 2. 指定国の内部境界線を消去し、外周の辺のみを抽出するアルゴリズム
+            const extractOutline = (features) => {
+                const edgeCount = new Map();
+                features.forEach(f => {
+                    const processRing = (ring) => {
+                        let offset = 0;
+                        const pts = ring.map((pt, i) => {
+                            if (i > 0) {
+                                let prevLon = ring[i-1][0];
+                                let lon = pt[0] + offset;
+                                if (lon - prevLon > 180) { offset -= 360; lon -= 360; }
+                                else if (prevLon - lon > 180) { offset += 360; lon += 360; }
+                                return [lon, pt[1]];
+                            }
+                            return [pt[0], pt[1]];
+                        });
+
+                        for (let i = 0; i < pts.length - 1; i++) {
+                            const pt1 = pts[i];
+                            const pt2 = pts[i+1];
+                            
+                            // 東経180度線に沿った縦の切り取り線を完全にカット
+                            const lon1 = pt1[0] % 360;
+                            const lon2 = pt2[0] % 360;
+                            if (Math.abs(Math.abs(lon1) - 180) < 0.1 && Math.abs(Math.abs(lon2) - 180) < 0.1 && Math.abs(lon1 - lon2) < 0.1) {
+                                continue;
+                            }
+                            
+                            // 約1km精度で同一辺を判定
+                            const k1 = `${pt1[0].toFixed(2)},${pt1[1].toFixed(2)}`;
+                            const k2 = `${pt2[0].toFixed(2)},${pt2[1].toFixed(2)}`;
+                            if (k1 === k2) continue;
+                            
+                            const key = k1 < k2 ? `${k1}|${k2}` : `${k2}|${k1}`;
+                            if (edgeCount.has(key)) {
+                                edgeCount.get(key).count++;
+                            } else {
+                                edgeCount.set(key, { pt1, pt2, count: 1 });
+                            }
+                        }
+                    };
+                    if (f.geometry.type === 'Polygon') f.geometry.coordinates.forEach(processRing);
+                    else if (f.geometry.type === 'MultiPolygon') f.geometry.coordinates.forEach(p => p.forEach(processRing));
+                });
+                
+                const outlineLines = [];
+                edgeCount.forEach(val => {
+                    if (val.count === 1) outlineLines.push([val.pt1, val.pt2]);
+                });
+                return outlineLines;
+            };
+
+            const usLines = extractOutline(usFeatures);
+            const cnLines = extractOutline(cnFeatures);
+            const auLines = extractOutline(auFeatures);
+            const ruLines = extractOutline(ruFeatures);
+            const caLines = extractOutline(caFeatures);
+
+            const finalFeatures = [];
+
+            // 3. 通常の国（180度線のみカットし、そのまま描画）
+            regularFeatures.forEach(f => {
+                const multiLines = [];
                 const processRing = (ring) => {
-                    for (let i = 0; i < ring.length - 1; i++) {
-                        const p1 = ring[i];
-                        const p2 = ring[i+1];
-                        
-                        // 【重要】アーティファクト防止：経度差が100度以上の辺（地球を横断する線）は描画対象外とする
-                        if (Math.abs(p1[0] - p2[0]) > 100) continue;
+                    let offset = 0;
+                    const pts = ring.map((pt, i) => {
+                        if (i > 0) {
+                            let prevLon = ring[i-1][0];
+                            let lon = pt[0] + offset;
+                            if (lon - prevLon > 180) { offset -= 360; lon -= 360; }
+                            else if (prevLon - lon > 180) { offset += 360; lon += 360; }
+                            return [lon, pt[1]];
+                        }
+                        return [pt[0], pt[1]];
+                    });
 
-                        // 小数点第2位で丸めることで微小な座標ズレを吸収し、確実に共有辺を相殺させる
-                        const x1 = p1[0].toFixed(2); const y1 = p1[1].toFixed(2);
-                        const x2 = p2[0].toFixed(2); const y2 = p2[1].toFixed(2);
+                    let currentLine = [];
+                    for (let i = 0; i < pts.length - 1; i++) {
+                        const pt1 = pts[i];
+                        const pt2 = pts[i+1];
+                        currentLine.push(pt1);
                         
-                        const key1 = `${x1},${y1}-${x2},${y2}`;
-                        const key2 = `${x2},${y2}-${x1},${y1}`;
-
-                        if (edges[key1]) { delete edges[key1]; }
-                        else if (edges[key2]) { delete edges[key2]; }
-                        else { edges[key1] = [p1, p2]; }
+                        const lon1 = pt1[0] % 360;
+                        const lon2 = pt2[0] % 360;
+                        // 180度線をまたぐ垂直線をカット
+                        if (Math.abs(Math.abs(lon1) - 180) < 0.1 && Math.abs(Math.abs(lon2) - 180) < 0.1 && Math.abs(lon1 - lon2) < 0.1) {
+                            if (currentLine.length > 1) multiLines.push(currentLine);
+                            currentLine = [];
+                        }
+                    }
+                    if (currentLine.length > 0) {
+                        currentLine.push(pts[pts.length - 1]);
+                        if (currentLine.length > 1) multiLines.push(currentLine);
                     }
                 };
+                if (f.geometry.type === 'Polygon') f.geometry.coordinates.forEach(processRing);
+                else if (f.geometry.type === 'MultiPolygon') f.geometry.coordinates.forEach(p => p.forEach(processRing));
 
-                const geom = f.geometry;
-                if (geom.type === 'Polygon') geom.coordinates.forEach(processRing);
-                else if (geom.type === 'MultiPolygon') geom.coordinates.forEach(poly => poly.forEach(processRing));
-                else if (geom.type === 'LineString') processRing(geom.coordinates);
-                else if (geom.type === 'MultiLineString') geom.coordinates.forEach(processRing);
-            });
-
-            // 抽出された大外枠の辺（ペア）から GeoJSON の MultiLineString を構築
-            const multiLines = [];
-            Object.values(countryEdges).forEach(edges => {
-                Object.values(edges).forEach(line => {
-                    multiLines.push(line);
-                });
-            });
-
-            const mergedGeoJSON = {
-                type: 'FeatureCollection',
-                features: [{
+                finalFeatures.push({
                     type: 'Feature',
-                    properties: { name: 'FIR Country Boundaries' },
+                    properties: f.properties,
                     geometry: { type: 'MultiLineString', coordinates: multiLines }
-                }]
+                });
+            });
+
+            // 4. 統合した国を新しいフィーチャーとして追加
+            if (usLines.length > 0) finalFeatures.push({ type: 'Feature', properties: { name: 'United States (Integrated FIRs)' }, geometry: { type: 'MultiLineString', coordinates: usLines } });
+            if (cnLines.length > 0) finalFeatures.push({ type: 'Feature', properties: { name: 'China (Integrated FIRs)' }, geometry: { type: 'MultiLineString', coordinates: cnLines } });
+            if (auLines.length > 0) finalFeatures.push({ type: 'Feature', properties: { name: 'Australia (Integrated FIRs)' }, geometry: { type: 'MultiLineString', coordinates: auLines } });
+            if (ruLines.length > 0) finalFeatures.push({ type: 'Feature', properties: { name: 'Russia (Integrated FIRs)' }, geometry: { type: 'MultiLineString', coordinates: ruLines } });
+            if (caLines.length > 0) finalFeatures.push({ type: 'Feature', properties: { name: 'Canada (Integrated FIRs)' }, geometry: { type: 'MultiLineString', coordinates: caLines } });
+
+            const geoJsonData = { type: 'FeatureCollection', features: finalFeatures };
+
+            const firStyle = (feature) => {
+                const isOceanic = feature.properties?.name?.toLowerCase().includes('oceanic') || feature.properties?.name?.toLowerCase().includes('pacific');
+                return { color: '#f97316', weight: isOceanic ? 2.0 : 1.0, fillOpacity: 0 };
             };
 
-            const firStyle = { color: '#f97316', weight: 1.2, fillOpacity: 0 };
-
-            const createShiftedGeoJSON = (offsetLng) => {
-                return L.geoJSON(mergedGeoJSON, {
+            const createGeoJSON = (offsetLng) => {
+                return L.geoJSON(geoJsonData, {
                     coordsToLatLng: (coords) => new L.LatLng(coords[1], coords[0] + offsetLng),
-                    style: firStyle
+                    style: firStyle,
+                    onEachFeature: (feature, layer) => {
+                        const name = feature.properties?.name || feature.properties?.id;
+                        if (name) layer.bindTooltip(name, { sticky: true, className: 'fir-tooltip' });
+                    }
                 });
             };
 
-            firGroup.addLayer(createShiftedGeoJSON(0));
-            firGroup.addLayer(createShiftedGeoJSON(360));
-            firGroup.addLayer(createShiftedGeoJSON(-360));
+            // 5. 世界のループ描画に合わせて3回重ねる
+            firGroup.addLayer(createGeoJSON(0));
+            firGroup.addLayer(createGeoJSON(360));
+            firGroup.addLayer(createGeoJSON(-360));
 
         } catch (err) { console.error("Failed to load FIR data", err); }
     };
     loadFIRs();
   }, [isMapLoaded, showFIR]);
 
-  // UIラベルの動的生成
   let currentTimeLabel = "LIVE";
   let activeLayerName = "No Layer Selected";
 
@@ -1040,22 +1107,19 @@ const WeatherRadarView = ({ navlogData }) => {
   if (showHimawari) layerNames.push("HIMAWARI");
   if (showGoes) layerNames.push("GOES");
   if (showMeteosat) layerNames.push("METEOSAT");
-  if (showArctic) layerNames.push("ARCTIC(SSEC)");
-  if (showGlobalIr) layerNames.push("GLOBAL IR(RV)");
+  if (showGlobalIr) layerNames.push("GLOBAL IR(AWC)");
   if (showRadar) layerNames.push("RADAR");
 
   if (layerNames.length > 0) {
       activeLayerName = layerNames.join(" + ");
   }
 
-  // 時間の取得ロジック
   if (showHimawari && jmaFrames.length > 0) {
       const idx = Math.max(0, Math.min(getLayerFrameIndex(jmaFrames.length), jmaFrames.length - 1));
       if (jmaFrames[idx]) currentTimeLabel = formatJmaTime(jmaFrames[idx].validtime || jmaFrames[idx].basetime);
-  } else if ((showGlobalIr || showRadar) && (rvSatFrames.length > 0 || rvRadarFrames.length > 0)) {
-       const frames = showRadar ? rvRadarFrames : rvSatFrames;
-       const idx = Math.max(0, Math.min(getLayerFrameIndex(frames.length), frames.length - 1));
-       if (frames[idx]) currentTimeLabel = formatRvTime(frames[idx].time);
+  } else if (showRadar && rvRadarFrames.length > 0) {
+       const idx = Math.max(0, Math.min(getLayerFrameIndex(rvRadarFrames.length), rvRadarFrames.length - 1));
+       if (rvRadarFrames[idx]) currentTimeLabel = formatRvTime(rvRadarFrames[idx].time);
   }
 
   return (
@@ -1086,8 +1150,7 @@ const WeatherRadarView = ({ navlogData }) => {
             <label className="flex items-center gap-1 cursor-pointer select-none text-slate-300 hover:text-white"><input type="checkbox" checked={showHimawari} onChange={(e) => setShowHimawari(e.target.checked)} className="accent-sky-500 rounded" /><span>HIMAWARI</span></label>
             <label className="flex items-center gap-1 cursor-pointer select-none text-slate-300 hover:text-white"><input type="checkbox" checked={showGoes} onChange={(e) => setShowGoes(e.target.checked)} className="accent-sky-500 rounded" /><span>GOES</span></label>
             <label className="flex items-center gap-1 cursor-pointer select-none text-slate-300 hover:text-white"><input type="checkbox" checked={showMeteosat} onChange={(e) => setShowMeteosat(e.target.checked)} className="accent-sky-500 rounded" /><span>METEOSAT</span></label>
-            <label className="flex items-center gap-1 cursor-pointer select-none text-slate-300 hover:text-white" title="SSEC Polar Coverage"><input type="checkbox" checked={showArctic} onChange={(e) => setShowArctic(e.target.checked)} className="accent-sky-500 rounded" /><span className="font-bold text-sky-200">ARCTIC(SSEC)</span></label>
-            <label className="flex items-center gap-1 cursor-pointer select-none text-slate-300 hover:text-white" title="RainViewer Global IR"><input type="checkbox" checked={showGlobalIr} onChange={(e) => setShowGlobalIr(e.target.checked)} className="accent-sky-500 rounded" /><span className="font-bold text-sky-200">GLOBAL IR(RV)</span></label>
+            <label className="flex items-center gap-1 cursor-pointer select-none text-slate-300 hover:text-white border-l border-slate-600 pl-2" title="Aviation Weather Center Global IR"><input type="checkbox" checked={showGlobalIr} onChange={(e) => setShowGlobalIr(e.target.checked)} className="accent-sky-500 rounded" /><span className="font-bold text-sky-200">GLOBAL IR</span></label>
             <label className="flex items-center gap-1 cursor-pointer select-none text-slate-300 hover:text-white border-l border-slate-600 pl-2"><input type="checkbox" checked={showRadar} onChange={(e) => setShowRadar(e.target.checked)} className="accent-sky-500 rounded" /><span>RADAR</span></label>
             <label className="flex items-center gap-1 cursor-pointer select-none text-slate-300 hover:text-white border-l border-slate-600 pl-2"><input type="checkbox" checked={showNavlogRoute} onChange={(e) => setShowNavlogRoute(e.target.checked)} className="accent-sky-500 rounded" /><span className="font-bold text-sky-400">Route</span></label>
             <label className="flex items-center gap-1 cursor-pointer select-none text-slate-300 hover:text-white border-l border-slate-600 pl-2"><input type="checkbox" checked={showAirspace} onChange={(e) => setShowAirspace(e.target.checked)} className="accent-rose-500 rounded" /><span className="font-bold text-rose-400">空域(R/T/W)</span></label>
@@ -1135,7 +1198,7 @@ export default function App() {
     setTimeout(() => setToastData({ message: '', visible: false }), 4000);
   };
   
-  // 自動アップデート検知 (Cloudflare Pages等向け)
+  // 自動アップデート検知
   useEffect(() => {
     const checkForUpdates = async () => {
       try {
@@ -1199,12 +1262,12 @@ export default function App() {
           }
           parsedData.newPlan.forEach(wp => {
               if (!wp || !wp.wp) return;
-              if (wps.length > 0 && wps[wps.length - 1].name === wp.wp) return; // 重複スキップ
+              if (wps.length > 0 && wps[wps.length - 1].name === wp.wp) return;
               const coord = parseWaypointToLatLng(wp);
               if (coord) wps.push({ ...coord, fl: wp.fl || 350 });
           });
           if (parsedData.destIcao) {
-              if (wps.length > 0 && wps[wps.length - 1].name === parsedData.destIcao) wps.pop(); // 直前が到着地なら置き換え
+              if (wps.length > 0 && wps[wps.length - 1].name === parsedData.destIcao) wps.pop();
               const destCoord = parseWaypointToLatLng(parsedData.destIcao);
               if (destCoord) wps.push({ ...destCoord, fl: 0 });
           }
